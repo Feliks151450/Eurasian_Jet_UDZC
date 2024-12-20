@@ -1,16 +1,7 @@
 begin ;记录全局参数
   ; start_time = get_cpu_time()
   pwd = systemfunc("pwd")
-  if(isStrSubset(pwd,"/Users/linlifei/code/"))
-    localpath = (/"/Volumes/Libra/","/Users/linlifei/","/Volumes/Libra/","/Users/linlifei/code/ncl/"/)
-    loadPath = "/Users/linlifei/code/ncl/ncl_lib/"
-  elseif(isStrSubset(pwd,"/home/ys17-23/LLF/code/"))
-    localpath := (/"/home/ys17-23/Extension2/llf/","/home/ys17-23/Extension2/llf/","/home/ys17-23/Extension2/llf/","/home/ys17-23/LLF/code/ncl/"/)
-    loadPath = "/home/ys17-23/LLF/code/ncl/ncl_lib/"
-  elseif(isStrSubset(pwd,"/home/llf/code/"))
-    localpath := (/"/data/","/data/","/data/","/home/llf/code/ncl/"/)
-    loadPath = "/home/llf/code/ncl/ncl_lib/"
-  end if
+  localpath := (/"/SSD1/","/data/","/data/","/home/llf/code/ncl/"/)
   call_stream = NewList("fifo")
   bufferPath = localpath(1)+"buffer/"
   bufferMode = "disabled"
@@ -35,31 +26,13 @@ load "sub_calc.ncl"
 load "sub_plot.ncl"
 load "fixBarColor.ncl"
 
-undef("latWeight")
-function latWeight(X)
-local lat_list,isLat,lat_name,wgt,dimName,Xw
+undef("readCor")
+function readCor(path)
+local f,cor
 begin
-  lat_list = (/"lat","Lat","latitude","Latitude"/);可能的纬度名
-  isLat = isdim(X,lat_list); 判断X中是否存在纬度
-  lat_name = lat_list(ind(isLat)) ;获得纬度名
-  wgt := cos(X&$lat_name$*0.01745329);获得权重
-  dimName = getvardimnames(X)
-  Xw := X*conform(X, wgt, ind(dimName .eq. lat_name)); 加权
-  copy_VarCoords(X, Xw)
-  return Xw
-end
-
-undef("show")
-procedure show(fileName[1])
-local type
-begin
-  if(typeof(fileName) .eq. "string")then
-    print("showImage: "+fileName)
-  elseif(NhlIsWorkstation(fileName))then
-    if(isatt(fileName, "path"))
-      print("showImage: "+fileName@path)
-    end if
-  end if
+  f := addfile(path, "r")
+  cor = f->cor
+  return cor
 end
 
 ;函数定义
@@ -144,35 +117,6 @@ begin
   copy_VarCoords(uwnd(:,0,0), jetStrength)
   return jetStrength
 end
-
-
-
-undef("bandpass")
-  function bandpass(ts,ca,cb,opt); ca和cb分别为滤波的范围，即ca-cd
-  local fca,fcb,dims,ID,IA,ts0
-  begin
-  
-    fca     = 1.0/ca
-    fcb     = 1.0/cb
-    dims    = 0
-    opt@return_envelope = False                  ; time series of filtered *and* envelope values
-    opt@remove_mean = True
-    ; printVarSummary(ts)
-    ID    = bw_bandpass_filter (ts,fca,fcb,opt,dims)  ; index of decadel
-    IA = ts-ID
-    ; opt@filename="filter/"+opt@filename
-    ; opt@trend = False
-    ; opt@rm = 0
-    ts0=IA
-    ts0!0="year"
-    ts0&year=ts&year
-    opt@nameL="IA"
-    opt@nameR="ID"
-    ; opt@legend = True
-    opt@gsnLeftString="bandpass"
-    ; plot = plot_ts(wks,ts0,0,opt)
-    return(ts0)
-  end
 
 undef("addShading")
 procedure addShading(plotid,upper,lower,opt)
@@ -327,69 +271,17 @@ type := "u"
   type@level = 200
   type@range := rangeEAJ
 method := "mean"
-cor_ERA5 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-  type@source = "ncep2"
-  type@year := ispan(1979, 2022, 1)
-cor_ncep2 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-  type@source = "ncep1"
-  type@year := ispan(1958, 2022, 1)
-cor_ncep1 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-  type@source = "era-i"
-  type@year := ispan(1979, 2018, 1)
-cor_erai := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-  type@source = "jra55"
-  type@year := ispan(1958, 2022, 1)
-cor_jra55 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-  type@source = "CFS"
-  type@year := ispan(1979, 2022, 1)
-cor_cfs := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-  type@source = "20thCRV3"
-  type@year := ispan(1836, 2015, 1)
-cor_20th := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-  type@source = "ERA-20C"
-  type@year := ispan(1901, 2010, 1)
-cor_era20c := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-  type@source = "ERA-20CM"
-  type@year := ispan(1900, 2010, 1)
-cor_era20cm := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-
-type = "u1"
-  type@source = "CERA-20C"
-  type@year := ispan(1901, 2010, 1)
-cor_cera20c1 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u2"
-cor_cera20c2 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u3"
-cor_cera20c3 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u4"
-cor_cera20c4 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u4"
-cor_cera20c4 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u4"
-cor_cera20c4 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u5"
-cor_cera20c5 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u6"
-cor_cera20c6 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u7"
-cor_cera20c7 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u8"
-cor_cera20c8 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u9"
-cor_cera20c9 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-type = "u10"
-cor_cera20c10 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-cor_cera20c := (/cor_cera20c1,cor_cera20c2,cor_cera20c3,cor_cera20c4,cor_cera20c5,cor_cera20c6,cor_cera20c7,cor_cera20c8,cor_cera20c9,cor_cera20c10/)
-copy_VarCoords(cor_cera20c1, cor_cera20c(0,:))
+cor_ERA5 = readCor("cor_ERA5.nc")
+cor_ncep2 = readCor("cor_ncep2.nc")
+cor_ncep1 = readCor("cor_ncep1.nc")
+cor_erai = readCor("cor_erai.nc")
+cor_jra55 = readCor("cor_jra55.nc")
+cor_cfs = readCor("cor_cfs.nc")
+cor_20th = readCor("cor_20th.nc")
+cor_era20c = readCor("cor_era20c.nc")
+cor_era20cm = readCor("cor_era20cm.nc")
+cor_cera20c = readCor("cor_cera20c.nc")
 cor_cera20c_mean = dim_avg_n_Wrap(cor_cera20c, 0)
-printVarSummary(cor_cera20c_mean)
 
 year_all = ispan(1900, 2022, 1)
 cor_all = new((/9,dimsizes(year_all)/), float, cor_ERA5@_FillValue)
@@ -408,13 +300,14 @@ cor_all_mean = dim_avg_n_Wrap(cor_all, 0)
 printVarSummary(cor_all_mean)
 ;Fig.2
 plot := newPlots(6)
-fileName = folder+"fig2"
+;# fileName
+fileName = "NC_fig6"
 fig2png = "png"
   fig2png@wkHeight = 4096
   fig2png@wkWidth = 4096
 wks := gsn_open_wks(fig2png,fileName)
 labelColor = "#434343"
-cmipColor = "#72ab6e"
+cmipColor = "#368237"
 lens2Color = "#9d4aae"
 bgColor = "#ff8747"
 ;# modelsNames
@@ -566,16 +459,16 @@ trend_cor_ncep1 := dim_trend(cor_ncep1({year_trend}))
 trend_cor_ncep2 := dim_trend(cor_ncep2({year_trend}))
 trend_cor_cfs := dim_trend(cor_cfs({year_trend}))
 trend_cor_erai := dim_trend(cor_erai({year_trend}))
-trend_cor_cera20c1 := dim_trend(cor_cera20c1({year_trend_20}))
-trend_cor_cera20c2 := dim_trend(cor_cera20c2({year_trend_20}))
-trend_cor_cera20c3 := dim_trend(cor_cera20c3({year_trend_20}))
-trend_cor_cera20c4 := dim_trend(cor_cera20c4({year_trend_20}))
-trend_cor_cera20c5 := dim_trend(cor_cera20c5({year_trend_20}))
-trend_cor_cera20c6 := dim_trend(cor_cera20c6({year_trend_20}))
-trend_cor_cera20c7 := dim_trend(cor_cera20c7({year_trend_20}))
-trend_cor_cera20c8 := dim_trend(cor_cera20c8({year_trend_20}))
-trend_cor_cera20c9 := dim_trend(cor_cera20c9({year_trend_20}))
-trend_cor_cera20c10 := dim_trend(cor_cera20c10({year_trend_20}))
+trend_cor_cera20c1 := dim_trend(cor_cera20c(0,{year_trend_20}))
+trend_cor_cera20c2 := dim_trend(cor_cera20c(1,{year_trend_20}))
+trend_cor_cera20c3 := dim_trend(cor_cera20c(2,{year_trend_20}))
+trend_cor_cera20c4 := dim_trend(cor_cera20c(3,{year_trend_20}))
+trend_cor_cera20c5 := dim_trend(cor_cera20c(4,{year_trend_20}))
+trend_cor_cera20c6 := dim_trend(cor_cera20c(5,{year_trend_20}))
+trend_cor_cera20c7 := dim_trend(cor_cera20c(6,{year_trend_20}))
+trend_cor_cera20c8 := dim_trend(cor_cera20c(7,{year_trend_20}))
+trend_cor_cera20c9 := dim_trend(cor_cera20c(8,{year_trend_20}))
+trend_cor_cera20c10 := dim_trend(cor_cera20c(9,{year_trend_20}))
 trend_cor_20th := dim_trend(cor_20th({year_trend}))
 trend_cor_era20c := dim_trend(cor_era20c({year_trend_20}))
 ;# 观测的趋势
@@ -696,113 +589,21 @@ print(avg(trend_cor_LENS2_all))
 zf_diff = cor_second_cmip6-cor_first_cmip6
 print(zf_diff)
 method = "clim"
-; WAJ_lat := new(dimsizes(member), double)
-; EAJ_lat := new(dimsizes(member), double)
+boxL := (/20,60,0,70/)
+boxO := (/15,55,170,230/)
 
-type := "U"
-  type@month := (/7,8/)
-  ; type@year := ispan(1979, 2014, 1)
-  type@year := ispan(1900, 1970, 1)
-  type@level = 200
-  type@range = (/-90, 90, 0, 360/)
-dim_models = dimsizes(models)
-do i = 0, dim_models-1
-  type@source = "CMIP6"
-  type@model = models(i)
-  U200 := process_CMIP6(type,method)
-  if(i .eq. 0)then
-    dim_clim = dimsizes(U200)
-    U200_clim_cmip6 := new((/dim_models,dim_clim(0),dim_clim(1)/), typeof(U200))
-  end if
-  U200_clim_cmip6(i,:,:) = U200
-end do
-copy_VarCoords(U200, U200_clim_cmip6(0,:,:))
-  type@year := ispan(2000, 2070, 1)
-do i = 0, dim_models-1
-  type@source = "CMIP6"
-  type@model = models(i)
-  U200 := process_CMIP6(type,method)
-  if(i .eq. 0)then
-    dim_clim = dimsizes(U200)
-    U200_clim_future_cmip6 := new((/dim_models,dim_clim(0),dim_clim(1)/), typeof(U200))
-  end if
-  U200_clim_future_cmip6(i,:,:) = U200
-end do
-copy_VarCoords(U200, U200_clim_future_cmip6(0,:,:))
-U200_clim_diff_cmip6 = (/U200_clim_future_cmip6-U200_clim_cmip6/)
-copy_VarCoords(U200, U200_clim_diff_cmip6(0,:,:))
-
-
-type := "SST"
-  type@month := (/7,8/)
-  ; type@year := ispan(1979, 2014, 1)
-  type@year := ispan(1900, 1970, 1)
-  type@level = 200
-  type@range = (/-90, 90, 0, 360/)
-dim_models = dimsizes(models)
-do i = 0, dim_models-1
-  type@source = "CMIP6"
-  type@model = models(i)
-  SST := process_CMIP6(type,method)
-  if(i .eq. 0)then
-    dim_clim = dimsizes(SST)
-    SST_clim_cmip6 := new((/dim_models,dim_clim(0),dim_clim(1)/), typeof(SST))
-  end if
-  SST_clim_cmip6(i,:,:) = SST
-end do
-copy_VarCoords(SST, SST_clim_cmip6(0,:,:))
-  type@year := ispan(2000, 2070, 1)
-do i = 0, dim_models-1
-  type@source = "CMIP6"
-  type@model = models(i)
-  SST := process_CMIP6(type,method)
-  if(i .eq. 0)then
-    dim_clim = dimsizes(SST)
-    SST_clim_future_cmip6 := new((/dim_models,dim_clim(0),dim_clim(1)/), typeof(SST))
-  end if
-  SST_clim_future_cmip6(i,:,:) = SST
-end do
-copy_VarCoords(SST, SST_clim_future_cmip6(0,:,:))
-SST_clim_diff_cmip6 = SST_clim_future_cmip6-SST_clim_cmip6
-copy_VarCoords(SST, SST_clim_diff_cmip6(0,:,:))
-
+f := addfile("CMIP6_ST_Diff.nc", "r")
+SST_clim_diff_cmip6 = f->ST
+; fout := addfile("CMIP6_ST_Diff.nc", "c")
+; fout->ST = SST_clim_diff_cmip6
 ;# 计算表面气温差异指数
 SST_clim_diff_cmip6_flip = lonFlip(SST_clim_diff_cmip6);0..357.5
 ; SST_clim_diff_cmip6_flip = latWeight(SST_clim_diff_cmip6_flip)
 SST_clim_diff_cmip6_zm0 := dim_avg_n_Wrap(SST_clim_diff_cmip6(:,{20:60},{0:70}), (/1,2/))
-SST_clim_diff_cmip6_zm1 := dim_avg_n_Wrap(SST_clim_diff_cmip6(:,{15:55},{165:235}), (/1,2/))
+SST_clim_diff_cmip6_zm1 := dim_avg_n_Wrap(SST_clim_diff_cmip6(:,{15:55},{170:230}), (/1,2/))
 SST_clim_diff_cmip6_zm2 := dim_avg_n_Wrap(SST_clim_diff_cmip6(:,{20:60},:), (/1,2/));纬圈平均
-
-printVarSummary(SST_clim_diff_cmip6)
-printVarSummary(SST_clim_diff_cmip6_flip)
-SST_clim_diff_cmip6_land1 := SST_clim_diff_cmip6(:,{20:65},{-10:130})
-SST_clim_diff_cmip6_land2 := SST_clim_diff_cmip6(:,{35:65},{235:270})
-SST_clim_diff_cmip6_land3 := SST_clim_diff_cmip6(:,{65:82},{305:335})
-dim_land1 = dimsizes(SST_clim_diff_cmip6_land1)
-dim_land2 = dimsizes(SST_clim_diff_cmip6_land2)
-dim_land3 = dimsizes(SST_clim_diff_cmip6_land3)
-total_land = dim_land1(1)*dim_land1(2)+dim_land2(1)*dim_land2(2)+dim_land3(1);*dim_land3(2)
-SST_clim_diff_cmip6_zm0 := (dim_sum_n_Wrap(SST_clim_diff_cmip6_land1, (/1,2/))+dim_sum_n_Wrap(SST_clim_diff_cmip6_land2, (/1,2/)))/total_land
-print(SST_clim_diff_cmip6_zm0)
-
-SST_clim_diff_cmip6_ocean1 := SST_clim_diff_cmip6(:,{10:60},{130:235})
-SST_clim_diff_cmip6_ocean2 := SST_clim_diff_cmip6(:,{15:50},{280:335})
-dim_ocean1 = dimsizes(SST_clim_diff_cmip6_ocean1)
-dim_ocean2 = dimsizes(SST_clim_diff_cmip6_ocean2)
-total_ocean = dim_ocean1(1)*dim_ocean1(2)+dim_ocean2(1)*dim_ocean2(2)
-SST_clim_diff_cmip6_zm1 := (dim_sum_n_Wrap(SST_clim_diff_cmip6_ocean1, (/1,2/))+dim_sum_n_Wrap(SST_clim_diff_cmip6_ocean2, (/1,2/)))/total_ocean
-print(SST_clim_diff_cmip6_zm1)
-; SST_clim_diff_cmip6_ocean1 := dim_avg_n_Wrap(SST_clim_diff_cmip6(:,{5:55},{165:229}), (/1,2/))
-; SST_clim_diff_cmip6_ocean2 := dim_avg_n_Wrap(SST_clim_diff_cmip6(:,{17:40},{275:315}), (/1,2/))
-; printVarSummary(SST_clim_diff_cmip6_zm)
-; printVarSummary(U200_clim_diff_cmip6_zm)
-; print(escorc(cor_second_cmip6, SST_clim_diff_cmip6_zm0))
-; print(escorc(cor_second_cmip6, SST_clim_diff_cmip6_zm1))
-; print(escorc(cor_second_cmip6, SST_clim_diff_cmip6_zm2))
-; print(escorc(cor_second_cmip6(model_index), SST_clim_diff_cmip6_zm0(model_index)))
-; print(escorc(cor_second_cmip6(model_index), SST_clim_diff_cmip6_zm1(model_index)))
-; print(escorc(cor_second_cmip6(model_index), SST_clim_diff_cmip6_zm2(model_index)))
 ;# Fig2a 滑动相关
+itemType = "Nature"
 opt := True
 notDrawAndFrame(opt)
   opt@minmax = (/-0.3,0.65/)
@@ -815,10 +616,10 @@ notDrawAndFrame(opt)
   ; opt@gsnYRefLine = -10
   opt@Yref = -10
   opt@xyLineThicknessF = 7
-  opt@gsnLeftString = "~F22~a~F21~  Simulated evolution of Corr (WAJ, EAJ)"
-  opt@gsnLeftStringFontHeightF = 0.04
+  opt@gsnLeftString = genItem("a",itemType)+"  Simulated evolution of Corr (WJA, EJA)"
+  opt@gsnLeftStringFontHeightF = 0.035
   opt@gsnLeftStringParallelPosF = -0.06
-  opt@gsnLeftStringOrthogonalPosF = 0.04
+  opt@gsnLeftStringOrthogonalPosF = 0.03
   ; opt@gsnLeftStringParallelPosF = 0.15
   ; opt@gsnRightString = "Simulated evolution of Corr (WAJ, EAJ)"
   ; opt@gsnRightStringFontHeightF = 0.035
@@ -839,7 +640,7 @@ notDrawAndFrame(opt)
   ; opt@tiXAxisFontColor = "Grey29"
   ; opt@tiXAxisOffsetYF = 0.065
   opt@tiXAxisFontHeightF = 0.03
-  opt@tiYAxisString = "UDZS"
+  opt@tiYAxisString = "UDZC"
   opt@tiYAxisOffsetXF = 0.005
 plot(0) = plot_ts(wks,slide_cor_cmip6_enhanced_high_mean,opt)
 ;# 背景颜色
@@ -866,7 +667,7 @@ add_ts(plot(0),slide_cor_lens2_enhanced_high_mean,opt)
 rshade := True
   rshade@gsFillOpacityF = 0.15
   ; rshade@gsFillColor = "#badcfe"
-  rshade@gsFillColor = "#99eb95"
+  rshade@gsFillColor = "#72da6d"
 addSpreading(plot(0),slide_cor_cmip6_enhanced_high,rshade)
   ; rshade@gsFillOpacityF = 1
   ; rshade@gsFillColor = "#ffbeb8"
@@ -1013,179 +814,157 @@ box = ""
 
 ;趋势柱状图
 ;# fig1b 模式
-; color0 = "#88d5f1"
-; colorBorder0 = "#06AEEB"
-; color1 = "#f99045"
-; colorBorder1 = "#ff6a00"
-means0 := (/trends_obs_mean,trend_cor_LENS2_high_mean,trend_cor_LENS2_all_mean,trend_cor_CMIP6_high_mean,trend_cor_CMIP6_all_mean/)
-; setDim(means0,dim,dimName,coord)
-; means0@barBorderColor = colorBorder0
-means0@barBorderThicknessF = 7
-means0@gsnXYBarChartBarWidth = 0.25
-; means0@gsnXYBarChartOutlineThicknessF = 10
-means0@gsnAboveYRefLineColor = color1
-means0@gsnBelowYRefLineColor = color1
-means0@barOffsetXF = -0.14
-opt := True
-notDrawAndFrame(opt)
-  opt@trYMaxF = 0.36
-  opt@trYMinF = -0.05
-  opt@trXMaxF = 4.7
-  opt@trXMinF = 0.3
-  opt@vpXF = 0.15
-  opt@gsnLeftString = "~F22~b~F21~  Trend in UDZS"
-  opt@gsnLeftStringFontHeightF = 0.04
-  opt@gsnLeftStringOrthogonalPosF = 0.02
-  opt@gsnLeftStringParallelPosF = -0.06
-  opt@tmYLBorderOn = True
-  opt@tmYRBorderOn = False
-  opt@tmXTBorderOn = False
-  ; opt@gsnLeftStringParallelPosF = -0.15
-  opt@gsnRightString = ""
-  ; opt@gsnRightStringFontHeightF = 0.02
-  opt@gsnRightStringOrthogonalPosF = 0.05
-  opt@tiYAxisString = "Trend (decade~S~-1~N~)"
-  opt@tiYAxisFontHeightF = 0.03
-  opt@tmYLFormat = "0@;*.1f"
-  opt@tmYLLabelFontHeightF = 0.03
-  opt@tmYLLabelFontColor = labelColor
-  opt@tmYLLabelDeltaF = -0.5
-  opt@tmXBLabelFontHeightF = 0.03
-  opt@tmXBLabelDeltaF = -0.1
-  opt@tmXBMajorLengthF = 0.01
-  opt@tmXBMajorOutwardLengthF = 0.01
-  opt@tmYLMajorLengthF = 0.01
-  opt@tmYLMajorOutwardLengthF = 0.01
-  opt@tmYLMajorThicknessF = 10
-  opt@tmYLTickSpacingF = 0.1
-  opt@tmYLTickStartF = 0
-  opt@tmYROn = False
-  opt@tmYUseLeft = False
-  opt@tmYRValues = (/0,0.15,0.3/)
-  opt@tmYRLabels = (/"0.0","0.03","0.06"/)
-  opt@tmYRLabelFontHeightF = 0.03
-  opt@tmYRLabelDeltaF = -0.3
-  opt@tmYRMode = "Explicit"
-  opt@tmYRMinorOn = False
-  opt@tmYRLabelsOn = True
-  opt@tmYRMajorThicknessF = 10
-  ; opt@tmYRTickSpacingF = 0.2
-  ; opt@tmYRMode = "Explicit"
-  ; opt@tmYRValues = (/0.0,0.2,0.4/)
-  opt@tmYLOn = True
-  opt@tmBorderThicknessF = 5
-  opt@vpHeightF = 0.6
-  opt@vpWidthF = 1.
-  opt@tmXBLabels = (/"~F22~Obs~F21~~C~ ","~F22~  LENS2~F21~~C~(selected)","~F22~LENS2~F21~~C~   (all)","~F22~  CMIP6~F21~~C~(selected)","~F22~CMIP6~F21~~C~   (all)"/)
-  ; opt@tmXBLabelFontColor =#00000001"
-  ; opt@tmXBLabelFont = 22
-  ; opt@tmXBLabelAngleF = -20
-  opt@tmXBLabelJust = "CenterCenter"
-  opt@gsnYRefLineDashPattern = 2
-  opt@gsnYRefLine = 0
-  ; opt@tmYLLabelFontColor = "#0673BA"
-  ; opt@tmYLMajorLineColor = "#0673BA"
-  ; opt@tmYRLabelFontColor = "#DB5527"
-  ; opt@tmYRMajorLineColor = "#DB5527"
-  opt@tmYRLabelDeltaF = -0.5
-  ; opt@tmYLLabelFont = 22
-  ; opt@tmBorderLineColor = "DodgerBlue"
-  ; opt@tmXBMajorLineColor = "DodgerBlue"
-  ; opt@tmYLMajorLineColor = "DodgerBlue"
-  ; opt@tmYLLabelFontColor = "DodgerBlue"
-  ; opt@tfPolyDrawOrder = "PostDraw"
-  ; opt@tmXBLabelFontColor = "DodgerBlue"
-  ; opt@tmXBLabels = models
-plot(3) = plot_bar(wks,means0,opt)
-  opt@barOffsetXF = -0.14
-  opt@barWidth = 0.08
+; ; color0 = "#88d5f1"
+; ; colorBorder0 = "#06AEEB"
+; ; color1 = "#f99045"
+; ; colorBorder1 = "#ff6a00"
+; means0 := (/trends_obs_mean,trend_cor_LENS2_high_mean,trend_cor_LENS2_all_mean,trend_cor_CMIP6_high_mean,trend_cor_CMIP6_all_mean/)
+; ; setDim(means0,dim,dimName,coord)
+; ; means0@barBorderColor = colorBorder0
+; means0@barBorderThicknessF = 7
+; means0@gsnXYBarChartBarWidth = 0.25
+; ; means0@gsnXYBarChartOutlineThicknessF = 10
+; means0@gsnAboveYRefLineColor = color1
+; means0@gsnBelowYRefLineColor = color1
+; means0@barOffsetXF = -0.14
+; opt := True
+; notDrawAndFrame(opt)
+;   opt@trYMaxF = 0.36
+;   opt@trYMinF = -0.05
+;   opt@trXMaxF = 4.7
+;   opt@trXMinF = 0.3
+;   opt@vpXF = 0.15
+;   opt@gsnLeftString = genItem("b",itemType)+"  Trend in UDZC"
+;   opt@gsnLeftStringFontHeightF = 0.035
+;   opt@gsnLeftStringOrthogonalPosF = 0.02
+;   opt@gsnLeftStringParallelPosF = -0.06
+;   opt@tmYLBorderOn = True
+;   opt@tmYRBorderOn = False
+;   opt@tmXTBorderOn = False
+;   ; opt@gsnLeftStringParallelPosF = -0.15
+;   opt@gsnRightString = ""
+;   ; opt@gsnRightStringFontHeightF = 0.02
+;   opt@gsnRightStringOrthogonalPosF = 0.05
+;   opt@tiYAxisString = "Trend (decade~S~-1~N~)"
+;   opt@tiYAxisFontHeightF = 0.03
+;   opt@tmYLFormat = "0@;*.1f"
+;   opt@tmYLLabelFontHeightF = 0.03
+;   opt@tmYLLabelFontColor = labelColor
+;   opt@tmYLLabelDeltaF = -0.5
+;   opt@tmXBLabelFontHeightF = 0.03
+;   opt@tmXBLabelDeltaF = -0.1
+;   opt@tmXBMajorLengthF = 0.01
+;   opt@tmXBMajorOutwardLengthF = 0.01
+;   opt@tmYLMajorLengthF = 0.01
+;   opt@tmYLMajorOutwardLengthF = 0.01
+;   opt@tmYLMajorThicknessF = 10
+;   opt@tmYLTickSpacingF = 0.1
+;   opt@tmYLTickStartF = 0
+;   opt@tmYROn = False
+;   opt@tmYUseLeft = False
+;   opt@tmYRValues = (/0,0.15,0.3/)
+;   opt@tmYRLabels = (/"0.0","0.03","0.06"/)
+;   opt@tmYRLabelFontHeightF = 0.03
+;   opt@tmYRLabelDeltaF = -0.3
+;   opt@tmYRMode = "Explicit"
+;   opt@tmYRMinorOn = False
+;   opt@tmYRLabelsOn = True
+;   opt@tmYRMajorThicknessF = 10
+;   ; opt@tmYRTickSpacingF = 0.2
+;   ; opt@tmYRMode = "Explicit"
+;   ; opt@tmYRValues = (/0.0,0.2,0.4/)
+;   opt@tmYLOn = True
+;   opt@tmBorderThicknessF = 5
+;   opt@vpHeightF = 0.6
+;   opt@vpWidthF = 1.
+;   opt@tmXBLabels = (/"~F22~Obs~F21~~C~ ","~F22~  LENS2~F21~~C~(selected)","~F22~LENS2~F21~~C~   (all)","~F22~  CMIP6~F21~~C~(selected)","~F22~CMIP6~F21~~C~   (all)"/)
+;   ; opt@tmXBLabelFontColor =#00000001"
+;   ; opt@tmXBLabelFont = 22
+;   ; opt@tmXBLabelAngleF = -20
+;   opt@tmXBLabelJust = "CenterCenter"
+;   opt@gsnYRefLineDashPattern = 2
+;   opt@gsnYRefLine = 0
+;   ; opt@tmYLLabelFontColor = "#0673BA"
+;   ; opt@tmYLMajorLineColor = "#0673BA"
+;   ; opt@tmYRLabelFontColor = "#DB5527"
+;   ; opt@tmYRMajorLineColor = "#DB5527"
+;   opt@tmYRLabelDeltaF = -0.5
+;   ; opt@tmYLLabelFont = 22
+;   ; opt@tmBorderLineColor = "DodgerBlue"
+;   ; opt@tmXBMajorLineColor = "DodgerBlue"
+;   ; opt@tmYLMajorLineColor = "DodgerBlue"
+;   ; opt@tmYLLabelFontColor = "DodgerBlue"
+;   ; opt@tfPolyDrawOrder = "PostDraw"
+;   ; opt@tmXBLabelFontColor = "DodgerBlue"
+;   ; opt@tmXBLabels = models
+; plot(3) = plot_bar(wks,means0,opt)
+;   opt@barOffsetXF = -0.14
+;   opt@barWidth = 0.08
 
-; errorBarRange = (/trends_obs_mean+trends_obs_sd,trends_obs_mean-trends_obs_sd/)
-; add_errorBar(plot(3),1,errorBarRange(0),errorBarRange(1),opt)
-errorBarRange = (/trend_cor_LENS2_high_mean+trend_cor_LENS2_high_sd,trend_cor_LENS2_high_mean-trend_cor_LENS2_high_sd/)
-add_errorBar(plot(3),2,errorBarRange(0),errorBarRange(1),opt)
-errorBarRange = (/trend_cor_LENS2_all_mean+trend_cor_LENS2_all_sd,trend_cor_LENS2_all_mean-trend_cor_LENS2_all_sd/)
-add_errorBar(plot(3),3,errorBarRange(0),errorBarRange(1),opt)
-errorBarRange = (/trend_cor_CMIP6_high_mean+trend_cor_CMIP6_high_sd,trend_cor_CMIP6_high_mean-trend_cor_CMIP6_high_sd/)
-add_errorBar(plot(3),4,errorBarRange(0),errorBarRange(1),opt)
-errorBarRange = (/trend_cor_CMIP6_all_mean+trend_cor_CMIP6_all_sd,trend_cor_CMIP6_all_mean-trend_cor_CMIP6_all_sd/)
-add_errorBar(plot(3),5,errorBarRange(0),errorBarRange(1),opt)
+; ; errorBarRange = (/trends_obs_mean+trends_obs_sd,trends_obs_mean-trends_obs_sd/)
+; ; add_errorBar(plot(3),1,errorBarRange(0),errorBarRange(1),opt)
+; errorBarRange = (/trend_cor_LENS2_high_mean+trend_cor_LENS2_high_sd,trend_cor_LENS2_high_mean-trend_cor_LENS2_high_sd/)
+; add_errorBar(plot(3),2,errorBarRange(0),errorBarRange(1),opt)
+; errorBarRange = (/trend_cor_LENS2_all_mean+trend_cor_LENS2_all_sd,trend_cor_LENS2_all_mean-trend_cor_LENS2_all_sd/)
+; add_errorBar(plot(3),3,errorBarRange(0),errorBarRange(1),opt)
+; errorBarRange = (/trend_cor_CMIP6_high_mean+trend_cor_CMIP6_high_sd,trend_cor_CMIP6_high_mean-trend_cor_CMIP6_high_sd/)
+; add_errorBar(plot(3),4,errorBarRange(0),errorBarRange(1),opt)
+; errorBarRange = (/trend_cor_CMIP6_all_mean+trend_cor_CMIP6_all_sd,trend_cor_CMIP6_all_mean-trend_cor_CMIP6_all_sd/)
+; add_errorBar(plot(3),5,errorBarRange(0),errorBarRange(1),opt)
 
-means0 := (/trend_obs_centry,trend_cor_LENS2_high_centry_mean,trend_cor_LENS2_all_centry_mean,trend_cor_CMIP6_high_centry_mean,trend_cor_CMIP6_all_centry_mean/)
-; setDim(means0,dim,dimName,coord)
-; means0@barBorderColor = colorBorder1
-means0@barBorderThicknessF = 5
-means0@gsnXYBarChartBarWidth = 0.25
-means0@barOffsetXF = 0.14
-; means0@gsnXYBarChartOutlineThicknessF = 10
-means0@gsnAboveYRefLineColor = color0
-means0@gsnBelowYRefLineColor = color0
-add_bar(plot(3),means0)
-  opt@barOffsetXF = 0.14
-add_errorBar(plot(3),2,trend_cor_LENS2_high_centry_mean+trend_cor_LENS2_high_centry_sd,trend_cor_LENS2_high_centry_mean-trend_cor_LENS2_high_centry_sd,opt)
-add_errorBar(plot(3),3,trend_cor_LENS2_all_centry_mean+trend_cor_LENS2_all_centry_sd,trend_cor_LENS2_all_centry_mean-trend_cor_LENS2_all_centry_sd,opt)
-add_errorBar(plot(3),4,trend_cor_CMIP6_high_centry_mean+trend_cor_CMIP6_high_centry_sd,trend_cor_CMIP6_high_centry_mean-trend_cor_CMIP6_high_centry_sd,opt)
-add_errorBar(plot(3),5,trend_cor_CMIP6_all_centry_mean+trend_cor_CMIP6_all_centry_sd,trend_cor_CMIP6_all_centry_mean-trend_cor_CMIP6_all_centry_sd,opt)
+; means0 := (/trend_obs_centry,trend_cor_LENS2_high_centry_mean,trend_cor_LENS2_all_centry_mean,trend_cor_CMIP6_high_centry_mean,trend_cor_CMIP6_all_centry_mean/)
+; ; setDim(means0,dim,dimName,coord)
+; ; means0@barBorderColor = colorBorder1
+; means0@barBorderThicknessF = 5
+; means0@gsnXYBarChartBarWidth = 0.25
+; means0@barOffsetXF = 0.14
+; ; means0@gsnXYBarChartOutlineThicknessF = 10
+; means0@gsnAboveYRefLineColor = color0
+; means0@gsnBelowYRefLineColor = color0
+; add_bar(plot(3),means0)
+;   opt@barOffsetXF = 0.14
+; add_errorBar(plot(3),2,trend_cor_LENS2_high_centry_mean+trend_cor_LENS2_high_centry_sd,trend_cor_LENS2_high_centry_mean-trend_cor_LENS2_high_centry_sd,opt)
+; add_errorBar(plot(3),3,trend_cor_LENS2_all_centry_mean+trend_cor_LENS2_all_centry_sd,trend_cor_LENS2_all_centry_mean-trend_cor_LENS2_all_centry_sd,opt)
+; add_errorBar(plot(3),4,trend_cor_CMIP6_high_centry_mean+trend_cor_CMIP6_high_centry_sd,trend_cor_CMIP6_high_centry_mean-trend_cor_CMIP6_high_centry_sd,opt)
+; add_errorBar(plot(3),5,trend_cor_CMIP6_all_centry_mean+trend_cor_CMIP6_all_centry_sd,trend_cor_CMIP6_all_centry_mean-trend_cor_CMIP6_all_centry_sd,opt)
 
-; box := "1920-1990"
-box := "1979-2014"
-  box@txJust = "CenterLeft"
-  box@txFontHeightF = 0.025
-  box@gsFillColor = color1
-  box@txOffsetXF := 0.2
-  ; box@txOffsetXF = 10
-  box@gsClipOn = False
-; add_box(plot(3),2050,0.75,15,0.07,box)
-add_box(plot(3),4.3,0.35,0.3,0.018,box)
-box = "1915-2014"
-  box@txOffsetXF := 0.2
-  box@gsFillColor = color0
-; add_box(plot(1),1.4,0.475,0.3,0.035,box)
-add_box(plot(3),4.3,0.31,0.3,0.018,box)
+; ; box := "1920-1990"
+; box := "1979-2014"
+;   box@txJust = "CenterLeft"
+;   box@txFontHeightF = 0.025
+;   box@gsFillColor = color1
+;   box@txOffsetXF := 0.2
+;   ; box@txOffsetXF = 10
+;   box@gsClipOn = False
+; ; add_box(plot(3),2050,0.75,15,0.07,box)
+; add_box(plot(3),4.3,0.35,0.3,0.018,box)
+; box = "1915-2014"
+;   box@txOffsetXF := 0.2
+;   box@gsFillColor = color0
+; ; add_box(plot(1),1.4,0.475,0.3,0.035,box)
+; add_box(plot(3),4.3,0.31,0.3,0.018,box)
 
-; ;# 前四张组图
-; resp := True
-;   resp@gsnPanelScalePlotIndex = 1
-;   resp@gsnPanelYWhiteSpacePercent = 5.
-;   resp@gsnPanelXF = (/0.1,0.55,0.1/)
-;   resp@gsnPanelYF = (/0.675,0.675,0.289/)+0.275
-;   resp@gsnPanelScaleF = (/0.5,0.5,0.75/)
-;   resp@gsnMaximize = True
-;   resp@gsnPanelRowSpec = True
-;   ; resp@gsnPanelLeft = -0.1
-;   ; resp@gsnPanelDebug = True
-;   ; resp@gsnPanelGridYF = 0.4
-; gsn_panel(wks,plot,(/2,1/),resp)
-; show(fileName+".png")
-;Fig.4算相关系数 2000-2070；模式在右侧(加上北美和大西洋)
-; ts := zf_diff
 model_index := ispan(0, dimsizes(models)-1, 1)
 model_index := pop(model_index,(/10,13,14,15,17,29,32,30/))
 ; print(model_index)
 ts := cor_second_cmip6(model_index)
 SST_clim_cor := escorc_n(ts, SST_clim_diff_cmip6(model_index,:,:), 0, 0)
-U200_clim_cor := escorc_n(ts, U200_clim_diff_cmip6(model_index,:,:), 0, 0)
 ; SST_clim_future_cor := escorc_n(ts, SST_clim_future_cmip6, 0, 0)
-copy_VarCoords(SST_clim_future_cmip6(0,:,:), SST_clim_cor)
-copy_VarCoords(U200_clim_future_cmip6(0,:,:), U200_clim_cor)
+copy_VarCoords(SST_clim_diff_cmip6(0,:,:), SST_clim_cor)
 
-; copy_VarCoords(SST_clim_future_cmip6(0,:,:), SST_clim_future_cor)
-; printVarSummary(SST_clim_cor)
-; fileName = folder+"cmip6_SST_clim_cor"
-; wks := gsn_open_wks(png, fileName)
 range := (/-60,90,-25,335/)
 
 ; range := (/0,90,0,360/)
-;# fig.2c
+;# fig.6b
 opt := True
-  opt@vpWidthF = 1.2
+  opt@vpWidthF = 1.3
   opt@vpHeightF = 0.5
   ; opt@gsnLeftString = "~F22~c~F21~   "+(/"Future warming amplitude linked to future zonal uniformity","u200"/)
   ; opt@gsnLeftString = "~F22~c~F21~   "+(/"Mid-latitude warming favors strong zonal uniformity","u200"/)
-  opt@gsnLeftString = "~F22~c~F21~  "+"Inter-model Corr (UDZS, future warming)"
+  opt@gsnLeftString = genItem("b",itemType)+"  "+"Inter-model Corr (UDZC, future warming)"
   opt@gsnLeftStringParallelPosF = -0.048
   opt@gsnLeftStringOrthogonalPosF = 0.035
-  opt@gsnLeftStringFontHeightF = 0.04
+  opt@gsnLeftStringFontHeightF = 0.035
   opt@tiYAxisString = "Latitude"
   opt@tiYAxisFontHeightF = 0.03
   opt@tiYAxisOffsetXF = -0.01
@@ -1210,7 +989,7 @@ opt := True
   ; opt@mpGridLatSpacingF = 30
   ; opt@mpGridLonSpacingF = 60
 notDrawAndFrame(opt)
-plot(2) = plot_base(wks,range,opt)
+plot(3) = plot_base(wks,range,opt)
 t := t_value(dimsizes(model_index)-2)
 opt := True
 notDrawAndFrame(opt)
@@ -1234,57 +1013,27 @@ notDrawAndFrame(opt)
   opt@cnLevels = (/-t@r90,t@r90,t@r95,0.45,0.55/)
   ; opt@pmLabelBarOrthogonalPosF = 0.1
   ; opt@Scale = 0.1
-add_cn(plot(2),SST_clim_cor ,range,opt)
-; box := (/20,60,0,55/)
-box := (/20,65,-10,129/)
-  box@gsLineThicknessF = 15
-  box@gsLineColor = "Tomato"
+add_cn(plot(3),SST_clim_cor ,range,opt)
+boxL := (/20,60,0,70/)
+; box := (/20,65,-10,129/)
+  boxL@gsLineThicknessF = 15
+  boxL@gsLineColor = "Tomato"
   ; box@
-add_lineBox(plot(2),box)
-box = (/35,65,236,270/)
-add_lineBox(plot(2),box)
+add_lineBox(plot(3),boxL)
+boxO = (/35,65,236,270/)
+; add_lineBox(plot(3),box)
 ; box = (/65,82,305,334/)
-; add_lineBox(plot(2),box)
-  box@gsLineColor = "DodgerBlue"
-; box = (/20,55,180,230/)
-box = (/10,60,131,234/)
-add_lineBox(plot(2),box)
-box = (/15,50,281,334/)
+; add_lineBox(plot(3),box)
+  boxO@gsLineThicknessF = 15
+  boxO@gsLineColor = "DodgerBlue"
+boxO = (/15,55,170,230/)
+; box = (/10,60,131,234/)
+add_lineBox(plot(3),boxO)
+; boxO = (/15,50,281,334/)
 
-add_lineBox(plot(2),box)
+; add_lineBox(plot(3),box)
 
-; res_line := True
-;   res_line@gsLineThicknessF = 10
-;   res_line@gsLineColor = "Firebrick1"
-; add_line(plot(0),(/0,180/),(/20,20/),res_line)
-; add_line(plot(0),(/180,360/),(/20,20/),res_line)
-
-; add_line(plot(0),(/0,180/),(/60,60/),res_line)
-; add_line(plot(0),(/180,360/),(/60,60/),res_line)
-; box := (/30,60/)
-; resp := True
-;   resp@gsnPanelLabelBar = True
-;   resp@gsnFrame = False
-;   resp@gsnPanelYF = 0.965
-;   resp@gsnPanelXF = 0.09
-;   resp@pmLabelBarWidthF = 0.6
-;   resp@pmLabelBarHeightF = 0.04
-;   resp@pmLabelBarOrthogonalPosF = 0.0
-;   resp@pmLabelBarParallelPosF = -0.05
-;   resp@lbLabelFontHeightF = 0.014
-;   resp@lbTitleString = "Correlation (p < 0.10)"
-;   ; resp@lbTitleAngleF =
-;   resp@lbTitlePosition = "Right"
-;   resp@lbTitleFontHeightF = 0.014
-;   resp@lbTitleDirection = "Across"
-;   ; resp@lbTitleOffsetF = 0.5
-;   resp@lbOrientation = "Horizontal"
-;   resp@gsnPanelScaleF = (/0.57/)
-;   ; resp@gsnPanelRight = 1.1
-; gsn_panel(wks,plot,(/1,1/),resp)
-; print(fileName)
-
-;# fig.4d,e
+;# fig.6c,e
 colors := (/"blue","green","red","turquoise1","darkorchid1","yellow","orange",\
   "mediumspringgreen","navajowhite","mistyrose","mediumorchid1","mediumpurple","maroon3","magenta2",\
   "olivedrab1","orange2","pink","paleturquoise1","skyblue1","palegreen","tan1",\
@@ -1315,7 +1064,7 @@ notDrawAndFrame(opt)
   ; opt@xyMarkers = (/16,16,16,16,16,16,16,16,16,16,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nfs,nfs,nfs,nfs,nfs,nfs,nfs,nfs,nfs,nfs,4,4,4,4,4,4,4,4,4,4,12,12,12,12,12,12,12,12,12,12/)
   opt@xyMarkers = (/16,16,16,16,16,16,16,16,16,16,16,16,16,16,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft/)
   opt@xyMarkerSizeF = 0.02
-  opt@tiXAxisString = "UDZS"
+  opt@tiXAxisString = "UDZC"
   opt@tiXAxisFontHeightF = 0.03
   opt@tiYAxisString = "Wariming amplitude (K)"
   opt@tiYAxisFontHeightF = 0.03
@@ -1324,12 +1073,12 @@ notDrawAndFrame(opt)
   opt@tmXBLabelFontHeightF = 0.03
   opt@tmXBLabelFontColor = labelColor
   ; opt@tmXBLabels = 
-  opt@gsnLeftString = "~F22~d~F21~  Land (red boxes)"
-  opt@gsnLeftStringFontHeightF = 0.04
+  opt@gsnLeftString = genItem("c",itemType)+"  Land (red box)"
+  opt@gsnLeftStringFontHeightF = 0.035
   opt@gsnLeftStringOrthogonalPosF = 0.03
   opt@gsnLeftStringParallelPosF = -0.09
-  opt@vpHeightF = 0.6
-  opt@vpWidthF = 0.65
+  opt@vpHeightF = 0.5
+  opt@vpWidthF = 0.55
   opt@xyMarkerSizeF = 0.015
   opt@gsnYRefLine = avg(SST_clim_diff_cmip6_zm0(model_index))
   opt@gsnXRefLine = avg(cor_second_cmip6(model_index))
@@ -1349,9 +1098,9 @@ text := "R = "+sprintf("%0.2f", escorc(cor_second_cmip6(model_index), SST_clim_d
 add_text(plot(4),text,-0.25,5.2)
   opt@trYMaxF := 3.4
   opt@trYMinF := 0.5
-  opt@tiYAxisString = ""
+  ; opt@tiYAxisString = ""
   ; opt@tmYLLabelsOn = False
-  opt@gsnLeftString = "~F22~e~F21~  Ocean (blue boxes)"
+  opt@gsnLeftString = genItem("d",itemType)+"  Ocean (blue box)"
   opt@gsnYRefLine = avg(SST_clim_diff_cmip6_zm1(model_index))
   ; opt@tiXAxisOffsetYF = 0.247
   ; opt@gsnLeftStringParallelPosF = 0
@@ -1375,18 +1124,12 @@ overlay(plot(4), plot_o0)
 plot_o1 = scatter(wks,cor_second_cmip6(model_index),SST_clim_diff_cmip6_zm1(model_index),opt)
 overlay(plot(5), plot_o1)
 
-; resp := True
-;   resp@gsnFrame = False
-;   resp@gsnPanelYF = (/0.52,0.52/)
-;   resp@gsnPanelXF = (/0.090,0.5/)
-;   resp@gsnPanelRight = 0.82
-; gsn_panel(wks, plot, (/1,2/), resp)
 
 ;# 组图
 resp := True
   resp@gsnFrame = False
-  resp@gsnPanelXF = (/0.05,0.33,0.53,0.05,0.45,0.695/)
-  resp@gsnPanelYF = (/0.9,0.9,0.9,0.63,0.63,0.63/)
+  resp@gsnPanelXF = (/0.05,0.33,0.53,0.05,0.53,0.53/)
+  resp@gsnPanelYF = (/0.9,0.9,0.9,0.66,0.9,0.66/)
   resp@gsnPanelScaleF = (/0.3,0.3,0.3,0.3,0.3,0.3/)
 gsn_panel(wks, plot, (/2,3/), resp)
 
@@ -1407,8 +1150,8 @@ models_plot := models(model_index)
 plot := gsn_csm_blank_plot(wks, rmarker)
 models_plot@txFontHeightF = 0.019
 models_plot@txJust = "CenterLeft"
-models_plot@txLineHeightF = 0.016
-txHeight = 0.924
+models_plot@txLineHeightF = 0.0145
+txHeight = 0.93
 add_string(plot,models_plot,0.05,txHeight)
 ; add_string(plot,models_plot(:9),0.06,txHeight)
 ; add_string(plot,models_plot(10:19),0.25,txHeight)
@@ -1420,7 +1163,8 @@ markers_hollw := new(50, graphic)
 rmarker := True
 ; notDrawAndFrame(rmarker)
 i = 0
-MarkerY := 0.92
+initY = 0.925
+MarkerY := initY
 markerX := 0.03
 markers0 := (/16,16,16,16,16,16,16,16,16,16,16,16,16,16,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nfp,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft,nft/)
 markers1 = (/4,4,4,4,4,4,4,4,4,4,4,4,4,4,12,12,12,12,12,12,12,12,12,12,12,12,12,12,7,7,7,7,7,7,7,7,7,7,7,7,7,7/)
@@ -1428,7 +1172,7 @@ do i = 0,dimsizes(models_plot)-1
   rmarker@gsMarkerIndex = markers0(i)
   ; print(i)
   rmarker@gsMarkerColor = colors(i)
-  rmarker@gsMarkerSizeF = 0.006
+  rmarker@gsMarkerSizeF = 0.005
   rmarker@gsMarkerThicknessF = 10.
   ; print("X: "+markerX+"; Y: "+MarkerY)
   markers_fill(i) = gsn_add_polymarker(wks, plot, markerX, MarkerY, rmarker)
@@ -1439,20 +1183,20 @@ do i = 0,dimsizes(models_plot)-1
   ; end if
   ; markerX = OriginalMarkerX + 0.1*(i/10)
 end do
-MarkerY := 0.92
+MarkerY := initY
 markerX := 0.03
 do i = 0, dimsizes(models_plot)-1
   rmarker@gsMarkerColor = colors2(i)
   rmarker@gsMarkerIndex = markers1(i)
   rmarker@gsMarkerThicknessF = 4.
-  rmarker@gsMarkerSizeF = 0.008
+  rmarker@gsMarkerSizeF = 0.007
   markers_hollw(i) = gsn_add_polymarker(wks, plot, markerX, MarkerY, rmarker)
   MarkerY = MarkerY - models_plot@txLineHeightF +0.00002
 end do
 resp := True
   resp@gsnFrame = False
   resp@gsnPanelScaleF = 0.3
-  resp@gsnPanelXF = 0.89
+  resp@gsnPanelXF = 0.7
   resp@gsnPanelYF = 0.95
 gsn_panel(wks, plot, (/1,1/), resp)
 frame(wks)

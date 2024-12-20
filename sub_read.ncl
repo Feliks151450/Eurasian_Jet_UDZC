@@ -155,28 +155,28 @@ begin
     path = localpath(2)+"CPC/CHW.fre.JA.1979_2022.nc"
     var_name = "chw"
   elseif(type .eq. "net90p")
-    path = localpath(2)+"ERA5_daily/land/ETHW/net90p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/net90p.fre.JA.1950_2022.nc"
     var_name = "net90p_fre"
   elseif(type .eq. "net90pInt")
-    path = localpath(2)+"ERA5_daily/land/ETHW/net90p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/net90p.fre.JA.1950_2022.nc"
     var_name = "net90p_cum"
   elseif(type .eq. "net85p")
-    path = localpath(2)+"ERA5_daily/land/ETHW/net85p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/net85p.fre.JA.1950_2022.nc"
     var_name = "net85p_fre"
   elseif(type .eq. "net85pInt")
-    path = localpath(2)+"ERA5_daily/land/ETHW/net85p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/net85p.fre.JA.1950_2022.nc"
     var_name = "net85p_cum"
   elseif(type .eq. "net80p")
-    path = localpath(2)+"ERA5_daily/land/ETHW/net80p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/net80p.fre.JA.1950_2022.nc"
     var_name = "net80p_fre"
   elseif(type .eq. "net80pInt")
-    path = localpath(2)+"ERA5_daily/land/ETHW/net80p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/net80p.fre.JA.1950_2022.nc"
     var_name = "net80p_cum"
   elseif(type .eq. "net75p")
-    path = localpath(2)+"ERA5_daily/land/ETHW/netnew75p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/netnew75p.fre.JA.1950_2022.nc"
     var_name = "net75p_fre"
   elseif(type .eq. "net75pInt")
-    path = localpath(2)+"ERA5_daily/land/ETHW/netnew75p.fre.JA.1950_2022.nc"
+    path = localpath(2)+"ERA5_land/ETHW/netnew75p.fre.JA.1950_2022.nc"
     var_name = "net75p_cum"
   elseif(type .eq. "precip90p")
     path = localpath(2)+"CPC/EP/precip90p.fre.JA.1979_2022.nc"
@@ -1411,6 +1411,8 @@ begin
     var := changeDimOrder(var,"year",0)
     copy_VarAtts(var_pos,var)
   else
+    printVarSummary(type)
+    printVarSummary(opt)
     var = read_from_config(type,opt) 
   end if
   if(isatt(type, "polyLon") .and. isatt(type, "polyLat"))then

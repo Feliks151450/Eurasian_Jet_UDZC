@@ -525,9 +525,8 @@ undef("add_line")
 procedure add_line (plotid,x,y,opt)
 local tem_wks,res,str,offsetXF,offsetYF,option
 begin
-  print(opt)
   option = opt
-  tem_wks = NhlGetParentWorkstation(plotid)
+  tem_wks = NhlGetParentWorkstation(plotid(0))
   res = get_att_eq(opt,"gs")
   if( .not. isatt(res, "gsLineColor"))then
     res@gsLineColor = "Black"
@@ -539,14 +538,17 @@ begin
   if( .not. checkAtt(res, "gsLineDashPattern"))then
     res@gsLineDashPattern = 0
   end if
-  str = unique_string("polyline")
-  plotid@$str$ = gsn_add_polyline(tem_wks, plotid, x, y, res)
-  if(typeof(opt) .eq. "string")
-    offsetXF = get_res_value_keep(opt,"txOffsetXF",0)
-    offsetYF = get_res_value_keep(opt,"txOffsetYF",0)
-    option@txFontColor = get_res_value_keep(opt,"txFontColor",res@gsLineColor) 
-    add_text(plotid,option,last(x)+offsetXF,last(y)+offsetYF)
-  end if
+  do i = 0, dimsizes(plotid)-1
+    str = unique_string("polyline")
+    plotid@$str$ = gsn_add_polyline(tem_wks, plotid(i), x, y, res)
+    if(typeof(opt) .eq. "string")
+      offsetXF = get_res_value_keep(opt,"txOffsetXF",0)
+      offsetYF = get_res_value_keep(opt,"txOffsetYF",0)
+      option@txFontColor = get_res_value_keep(opt,"txFontColor",res@gsLineColor) 
+
+      add_text(plotid(i),option,last(x)+offsetXF,last(y)+offsetYF)
+    end if
+  end do
 end
 
 
@@ -802,9 +804,9 @@ begin
   res = True
     res@gsnDraw = False
     res@gsnFrame = False
-  exclude := (/"cn","lb","Scale","gsn","preyear","gsnStringBold","tmLabelFontHeightF","vc","gsLineThicknessF","tmXBLabelsOn"/)
+  exclude := (/"cn","lb","Scale","preyear","gsnStringBold","tmLabelFontHeightF","vc","gsLineThicknessF","tmXBLabelsOn"/)
   copy_VarAtts_match(opt,res,res_plot,exclude)
-  atts = (/"tmXBLabelsOn","tmYLLabelsOn","gsnCorner","gsnLeftString","gsnRightString","gsnCenterString","tiMain","tmYLTick"/)
+  atts = (/"tmXBLabelsOn","tmYLLabelsOn","gsnCorner","gsnLeftString","gsnRightString","gsnCenterString","ti","tmYLTick","mp"/)
   do i = 0, plotSize-1
     do a = 0, dimsizes(atts)-1
       copy_res_eq_with_index(option,res,atts(a),i)
@@ -963,12 +965,13 @@ begin
 end
 
 undef("add_hatching")
-procedure add_hatching (plotid,var,range,opt)
-local plot,tem_wks,res,exclude,dotColor,cnLevel,hatchingPattern,hatchingColor
+procedure add_hatching(plotid,var,range,opt)
+local plot,tem_wks,res,exclude,dotColor,cnLevel,hatchingPattern,hatchingColor,hatchingOpacity
 begin
   tem_wks = NhlGetParentWorkstation(plotid)
   hatchingPattern = get_res_value_keep(opt, "hatchingPattern", 6)
   hatchingColor = get_res_value_keep(opt, "hatchingColor", "white")
+  hatchingOpacity = get_res_value_keep(opt, "hatchingOpacity", 1.0)
   res = True
     res@gsnDraw = False
     res@gsnFrame = False
@@ -979,7 +982,7 @@ begin
     res@lbLabelBarOn = False
     res@cnLevelSelectionMode = "ExplicitLevels"
     res@cnFillScaleF = 2.0
-    res@cnFillDotSizeF = 0.003
+    res@cnFillDotSizeF = 0.03
     res@cnLevel = 1
   exclude = (/"tm","Scale","gsnStringBold","preyear","vc","gsnCorner","lbLabelFormat"/)
   copy_VarAtts_match(opt,res,res_plot,exclude)
@@ -996,6 +999,8 @@ begin
     cnLevel = res@cnLevel
     res@cnLevels := (/-999.,-cnLevel,cnLevel,999./)
     res@cnFillColors   := (/hatchingColor,hatchingColor,"gray",hatchingColor,hatchingColor/)
+    ; print("hatchingOpacity: "+hatchingOpacity)
+    res@cnFillOpacityF = 0.0;hatchingOpacity
     delete([/res@cnLevel/])
   if(isatt(opt,"dotDrawOrder"))
     res@cnFillDrawOrder = opt@dotDrawOrder
@@ -1012,7 +1017,7 @@ end
 
 undef("add_cor")
 procedure add_cor (plotid,ts,tp,range,opt)
-local type,res,nyear,t,method,X,cor,res_test
+local type,res,nyear,t,method,X,cor,res_test,smoothingRepeat
 begin
   type = tp
   call_add_cor = "add_cor"
@@ -1045,8 +1050,8 @@ begin
   type@year := ts&year
   ; opt@lonP0=False 
   ; opt@vertical=False
-  if(isatt(opt,"polar")) range(2:3) = (/0,360/) end if
-  type@range := range
+  if(isatt(opt,"polar") .and. opt@polar) range(2:3) = (/0,360/) end if
+  ; type@range := range
   id = type
     id@type = type
     ; id@dim_to_mean = dim_to_mean
@@ -1081,9 +1086,11 @@ begin
     res@reverseColors = opt@reverseColors
   end if
   if(get_res_value_keep(opt,"smoothing",False));平滑
-    print("smoothing")
-    print("123")
-    cor := smth9_Wrap(cor, 0.25, 0.5, False)
+    smoothingRepeat = get_res_value_keep(opt,"smoothingRepeat",1)
+    do i = 0, smoothingRepeat-1
+      print("smoothing["+i+"]")
+      cor := smth9_Wrap(cor, 0.25, 0.5, False)
+    end do
   end if
   add_cn(plotid,cor,range,res)
 
@@ -1123,6 +1130,164 @@ begin
 end
 
 
+
+undef("add_reg_diff")
+procedure add_reg_diff (plotid,ts0,ts1,tp,range,opt)
+local type0,type1,method,res,tval0,tval1,rec0,rec1,t0,t1,nyear0,nyear1,X,X_clim,exclude,id0,id1,tem,rec_sig0,rec_sig1,diff
+  begin
+  type0 = tp
+  type1 = tp
+  call_add_reg = "add_reg"
+  ListAppend(call_stream, call_add_reg)
+  ; printc("start: add_reg","green")
+  method = "anom"
+  if(isatt(opt, "add_dim_to_mean"))
+    method@add_dim_to_mean = opt@add_dim_to_mean
+  end if
+  if(isatt(opt, "detrend"))
+    method@detrend = opt@detrend
+  end if
+  currentPlot = plotid@plot
+  res = True
+    if(isatt(plotid,"shadedPlots"))
+      res@cnLinesOn = is_element(currentPlot,plotid@shadedPlots)
+      res@gsnContourNegLineDashPattern = 14
+      res@cnLineThicknessF = 5.
+    else
+      res@cnLinesOn = False
+    end if
+    res@cnFillOn = .not. res@cnLinesOn
+    res@gsnAddCyclic = (range(3)-range(2)) .eq. 360
+    res@gsnDraw = False
+    res@gsnFrame = False
+    res@lbLabelBarOn = True
+    res@lbOrientation = "Horizontal"
+    res@gsnStringFontHeightF = 0.027
+    res@cnLevels = (/-4.,-3,-2,-1,1,2,3,4/)
+    res@Scale = 1.
+  exclude = (/"gsnLeftStrings","gsnCornerStrings"/)
+
+  copy_VarAtts_match(opt,res,res_plot,exclude)
+    ; res@cnFillDrawOrder = "predraw"
+  ; opt@with  = get_res_value_keep(opt,"with",(/ts0@type,ts1@type/))
+  nyear0     = dimsizes(ts0&year)
+  nyear1     = dimsizes(ts1&year)
+  
+  ; opt@preyear = get_res_value_keep(opt,"preyear",False)
+  t0 = t_value(nyear0-2)
+  t1 = t_value(nyear1-2)
+  ; type@source = "jra55"
+  type0@year := ts0&year
+  type0@ts = ts0
+  type1@year := ts1&year
+  type1@ts = ts1
+  id0 = type0
+    id0@type = type0
+    id0@call = call_add_reg
+  id1 = type1
+    id1@type = type1
+    id1@call = call_add_reg
+  if(isatt(opt,"add_dim_to_mean"))
+    id0@add_dim_to_mean = opt@add_dim_to_mean
+    id1@add_dim_to_mean = opt@add_dim_to_mean
+  end if
+  if(call_stream[0] .eq. call_add_reg .and. is_element(bufferMode,(/"read","smart"/)) .and. check_buffer(id0))
+      printc("read buffer: "+call_add_reg,"blue")
+      rec0 := read_buffer(id0)
+  else
+    if(isatt(opt, "focusIA"))then
+      type0@year := ispan(1950, 2022, 1)
+      X := process(type0,method)
+      tem := bandpass(X,10,200,True)
+      rec0 := regCoef_n(ts0, tem({ts0&year},:,:), 0, 0)
+    else
+      X := process(type0,method)
+      if(isatt(opt, "designal"))then
+        print("designal")
+        X = (/designal(X,opt@designal)/)
+      end if
+      rec0 := regCoef_n(ts0, X, 0, 0)
+    end if
+    if(isatt(opt, "relative") .and. opt@relative)then
+      method = "stddev"
+      X_clim = process(type0,method)
+      tem := where(X_clim .eq. 0, X_clim@_FillValue, X_clim)
+      rec0 = (/rec0/tem/)
+      rec0@units = "%"
+    end if
+    ; printVarSummary(X)
+    copy_VarCoords_not_n( X, rec0, 0)
+    if((call_stream[0] .eq. call_add_reg) .and. is_element(bufferMode,(/"write","smart"/)))
+      write_buffer(rec0,id0)
+    end if
+  end if
+
+  if(call_stream[0] .eq. call_add_reg .and. is_element(bufferMode,(/"read","smart"/)) .and. check_buffer(id1))
+      printc("read buffer: "+call_add_reg,"blue")
+      rec1 := read_buffer(id1)
+  else
+    if(isatt(opt, "focusIA"))then
+      type1@year := ispan(1950, 2022, 1)
+      X := process(type1,method)
+      tem := bandpass(X,10,200,True)
+      rec1 := regCoef_n(ts1, tem({ts1&year},:,:), 0, 0)
+    else
+      X := process(type1,method)
+      if(isatt(opt, "designal"))then
+        print("designal")
+        X = (/designal(X,opt@designal)/)
+      end if
+      rec1 := regCoef_n(ts1, X, 0, 0)
+    end if
+    if(isatt(opt, "relative") .and. opt@relative)then
+      method = "stddev"
+      X_clim = process(type1,method)
+      tem := where(X_clim .eq. 0, X_clim@_FillValue, X_clim)
+      rec1 = (/rec1/tem/)
+      rec1@units = "%"
+    end if
+    ; printVarSummary(X)
+    copy_VarCoords_not_n( X, rec1, 0)
+    if((call_stream[0] .eq. call_add_reg) .and. is_element(bufferMode,(/"write","smart"/)))
+      write_buffer(rec1,id1)
+    end if
+  end if
+
+  if(isatt(opt,"multi"))then
+     rec0 = (/rec0*opt@multi/) 
+     rec1 = (/rec1*opt@multi/) 
+  end if
+  tval0 = get_tval(rec0)
+  tval1 = get_tval(rec1)
+  if(get_res_value_keep(opt,"smoothing",False));平滑
+    rec0 := smth9_Wrap(rec0, 0.25, 0.5, False)
+    rec1 := smth9_Wrap(rec1, 0.25, 0.5, False)
+  end if
+
+  if(get_res_value_keep(opt,"onlySignificant",False));只画显著区域
+    rec_sig0 = where(abs(tval) .ge. t@t90,rec0,rec0@_FillValue)
+    rec_sig1 = where(abs(tval) .ge. t@t90,rec1,rec1@_FillValue)
+    rec0 = (/rec_sig0/)
+    rec1 = (/rec_sig1/)
+  end if
+
+  diff = rec1 - rec0
+  copy_VarCoords(rec1, diff)
+  ; cor := smth9_Wrap(cor, 0.5, 0., False)
+
+  ; cor@cnLevels         = (/-t@r999,-t@r99,-t@r95,-t@r90,t@r90,t@r95,t@r99,t@r999/)
+    ; cor@cnLevels         = (/-0.9,-0.7,-0.5,-0.3,0.3,0.5,0.7,0.9/)
+  ; cor@cnLevels         := (/-t@r99,-t@r95,-t@r90,t@r90,t@r95,t@r99/)
+
+  ; rec@cnFillColors = (/clr(0),clr(1),clr(3),clr(4),clr(5),clr(7),clr(8)/)
+
+  ; res@cnLevels := (/-t@r999,-t@r99,-t@r95,-t@r90,t@r90,t@r95,t@r99,t@r999/)
+
+
+  res@gsnLeftString = ""
+  if(isatt(opt,"reverseColors")) res@reverseColors = opt@reverseColors end if
+  add_cn(plotid,diff,range,res)
+end
 
 undef("add_reg")
 procedure add_reg (plotid,ts,tp,range,opt)
@@ -1243,6 +1408,10 @@ local type,method,res,tval,rec,t,nyear,X,exclude
     res_test@cnFillScaleF := 1.2
     ; res_test@stipplingColor = "black"
     exclude := (/"cnFillOn","Scale","gsnLeftStrings","gsnCornerStrings"/)
+    testSmooth := get_res_value_keep(opt,"testSmooth",False)
+    if(testSmooth)then
+      tval = smth9_Wrap(tval, 0.5, 0.5, True)
+    end if
 
     copy_VarAtts_match(opt,res_test,res_plot,exclude)
     ; res_test@cnLevels = (/-999,-t@t95,-t@t90,t@t90,t@t95,999/)
@@ -1272,6 +1441,14 @@ local type,method,res,tval,rec,t,nyear,X,exclude
       res_test@lbLabelBarOn = False
       res_test@cnLevels := (/-999,-t@$("t"+sigLevel)$,t@$("t"+sigLevel)$,999/)
       res_test@gsnContourNegLineDashPattern = 0
+      if(isatt(opt, "contourColor"))then
+        res_test@cnLineColor = opt@contourColor
+      end if
+      if(isatt(opt, "contourThicknessF"))then
+        res_test@cnLineThicknessF = opt@contourThicknessF
+      end if
+      delete(res_test@cnLineColors)
+      res_test@cnMonoLineColor = True
       add_cn(plotid,tval,range,res_test)
     end if
     if(res_test@mode .eq. "hatching")then
@@ -1279,12 +1456,10 @@ local type,method,res,tval,rec,t,nyear,X,exclude
       res_test = get_res_eq(opt,"hatching")
       res_test@cnFillOn = True
       res_test@cnLevel = t@$("t"+sigLevel)$
-      print(res_test)
-      add_hatching(plotid,tval,range,res_test)
-      add_hatching(plotid,tval,range,res_test)
-      add_hatching(plotid,tval,range,res_test)
-      add_hatching(plotid,tval,range,res_test)
-      add_hatching(plotid,tval,range,res_test)
+      hatchingRepeat = get_res_value_keep(opt, "hatchingRepeat", 5)
+      do i = 0,hatchingRepeat-1
+        add_hatching(plotid,tval,range,res_test)
+      end do
     end if
   end if
 end
@@ -1659,7 +1834,7 @@ end
 
 undef("add_vc_dev"); FX| add_vc_dev
 procedure add_vc_dev (plotid:graphic,x,y,ranges,opt)
-local wks,plot,clr,res
+local wks,plot,clr,res,tem_wks,resw
 begin
   tem_wks = NhlGetParentWorkstation(plotid)
   ; t     = t_value(opt@nyear-2)
@@ -1760,6 +1935,7 @@ begin
     ; resw@vcMapDirection = False
     resw@vcLevelSelectionMode = "ExplicitLevels"
     resw@vcLineArrowColor = "firebrick1"
+    resw@lbLabelBarOn = False
     ; resw@vcGlyphOpacityF = 0.5
   ; resw@vcVectorDrawOrder = "postdraw"
 
@@ -1831,6 +2007,12 @@ begin
 
   rec_x := regCoef_n(ts, x, 0, 0)
   rec_y := regCoef_n(ts, y, 0, 0)
+
+  if(get_res_value_keep(opt,"smoothing",False));平滑
+    print("vc smoothing")
+      rec_x := smth9_Wrap(rec_x, 0.5, 0.5, False)
+      rec_y := smth9_Wrap(rec_y, 0.5, 0.5, False)
+  end if
 
   t_x           = abs(onedtond(rec_x@tval, dimsizes(rec_x)))
   t_y           = abs(onedtond(rec_y@tval, dimsizes(rec_y)))
@@ -2138,35 +2320,96 @@ end
 
 undef("add_diff")
 procedure add_diff(plotid:graphic,tp,year0,year1,range,opt)
-local option,type,SST0,clim0,var0,SST1,clim1,var1,dif,nyear0,nyear1,df,S,dif_t,t,plot
+local option,type,SST0,clim0,var0,SST1,clim1,var1,dif,nyear0,nyear1,df,S,dif_t,t,plot,tem,res_test,tval
 begin
   nyear0 = dimsizes(year0)
   nyear1 = dimsizes(year1)
+  print(nyear0)
+  print(nyear1)
   df = nyear0+nyear1-2
   t = t_value(df)
   option = True
     option@cnLevel = t@t95
   copy_VarAtts_match(opt,option,res_plot,"")
   type := tp
-    type@year = year0
+    type@year := year0
   SST0 = process(type,"mean")
   clim0 = dim_avg_n_Wrap(SST0, 0)
   var0 = dim_variance_n_Wrap(SST0, 0)
-    type@year = year1
+    type@year := year1
   SST1 = process(type,"mean")
   clim1 = dim_avg_n_Wrap(SST1, 0)
   var1 = dim_variance_n_Wrap(SST1, 0)
   dif := clim1 - clim0
   S = sqrt(((nyear0-1)*var0+(nyear1-1)*var1)/df)
-  dif_t = dif/(S*sqrt(1./nyear0+1./nyear1))
+  tem = S*sqrt(1./nyear0+1./nyear1)
+  tem = where(tem .eq. 0, 0.01, tem)
+  dif_t = dif/tem
   copy_VarCoords(clim1, dif)
   copy_VarCoords(clim1, dif_t)
+  if(isatt(opt,"reverseColors")) option@reverseColors = opt@reverseColors end if
 
     ; option@cnLevels = (/10,13,16,19,22,25/)
   ; add_clim(plot,type,range,option)
   add_cn(plotid,dif,range,option)
   ; option@cnFillDotColor = "black"
-  add_dots(plotid,dif_t,range,option)
+  ; if(get_res_value_keep(opt, "test", False))
+  ;   add_dots(plotid,dif_t,range,option)
+  ; end if
+  tval = dif_t
+  res_test = get_res_value_keep(opt,"test",True)
+  if(res_test)
+    res_test@mode = get_res_value_keep(opt,"mode","stippling")
+    res_test@cnFillDotSizeF = 0.0025
+    res_test@cnFillScaleF := 1.2
+    ; res_test@stipplingColor = "black"
+    exclude := (/"cnFillOn","Scale","gsnLeftStrings","gsnCornerStrings"/)
+    testSmooth := get_res_value_keep(opt,"testSmooth",False)
+    if(testSmooth)then
+      tval = smth9_Wrap(tval, 0.5, 0.5, True)
+    end if
+
+    copy_VarAtts_match(opt,res_test,res_plot,exclude)
+    ; res_test@cnLevels = (/-999,-t@t95,-t@t90,t@t90,t@t95,999/)
+    ; res_test@cnLevels := (/-999,-t@t95,t@t95,999/)
+    if(res_test@mode .eq. "stippling")
+      res_test@cnFillOn = True
+      if(isatt(opt,"stipplingColor"))
+        res_test@cnFillDotColor = opt@stipplingColor
+        ; print(res_test@stipplingColor)
+      end if
+      if(isatt(opt, "cnFillDotOpacityF"))then
+        res_test@cnFillOpacityF = opt@cnFillDotOpacityF
+      end if
+      if(isatt(opt, "dotDrawOrder"))then
+        res_test@dotDrawOrder = opt@dotDrawOrder
+        ; print(opt@dotDrawOrder)
+      end if
+      level = get_res_value_keep(opt,"stipplingLevel",90)
+      res_test@cnLevel = t@$("t"+level)$
+      add_dots(plotid,tval,range,res_test)
+    end if
+
+    if(res_test@mode .eq. "contour")
+      sigLevel = get_res_value_keep(opt,"sigLevel",90) 
+      res_test@cnFillOn = False
+      res_test@cnLinesOn = True
+      res_test@lbLabelBarOn = False
+      res_test@cnLevels := (/-999,-t@$("t"+sigLevel)$,t@$("t"+sigLevel)$,999/)
+      res_test@gsnContourNegLineDashPattern = 0
+      add_cn(plotid,tval,range,res_test)
+    end if
+    if(res_test@mode .eq. "hatching")then
+      sigLevel = get_res_value_keep(opt,"sigLevel",90) 
+      res_test = get_res_eq(opt,"hatching")
+      res_test@cnFillOn = True
+      res_test@cnLevel = t@$("t"+sigLevel)$
+      hatchingRepeat = get_res_value_keep(opt, "hatchingRepeat", 5)
+      do i = 0,hatchingRepeat-1
+        add_hatching(plotid,tval,range,res_test)
+      end do
+    end if
+  end if
 end
 
 undef("add_composite") ; FX| composite_cn
@@ -2266,12 +2509,10 @@ begin
         res_test@cnFillOn = True
         res_test@cnLinesOn = False
         res_test@cnLevel = t@$("t"+sigLevel)$
-        ; print(res_test)
-        add_hatching(plotid,tval,range,res_test)
-        ; add_hatching(plotid,tval,range,res_test)
-        ; add_hatching(plotid,tval,range,res_test)
-        ; add_hatching(plotid,tval,range,res_test)
-        ; add_hatching(plotid,tval,range,res_test)
+        hatchingRepeat = get_res_value_keep(opt, "hatchingRepeat", 5)
+        do i = 0,hatchingRepeat-1
+          add_hatching(plotid,tval,range,res_test)
+        end do
       end if
     end if
     if(testMethod .eq. "stddev")then
@@ -2312,12 +2553,10 @@ begin
         res_test@cnFillOn = True
         res_test@cnLinesOn = False
         res_test@cnLevels := (/-t@$("t"+sigLevel)$,t@$("t"+sigLevel)$/)
-        ; print(res_test)
-        add_hatching(plotid,tval,range,res_test)
-        add_hatching(plotid,tval,range,res_test)
-        add_hatching(plotid,tval,range,res_test)
-        add_hatching(plotid,tval,range,res_test)
-        add_hatching(plotid,tval,range,res_test)
+        hatchingRepeat = get_res_value_keep(opt, "hatchingRepeat", 5)
+        do i = 0,hatchingRepeat-1
+          add_hatching(plotid,tval,range,res_test)
+        end do
       end if
     end if
   end if
@@ -3792,7 +4031,7 @@ begin
   tem_wks = NhlGetParentWorkstation(plot)
   res_bar := True
     res_bar@tfPolyDrawOrder = "Postdraw"
-    res_bar@gsLineThicknessF = 5.
+    res_bar@gsLineThicknessF = get_res_value_keep(opt, "gsLineThicknessF", 5)
     copy_VarAtts_match(opt,res_bar,"gs","")
     w := get_res_value_keep(opt,"barWidth",0.1)
     barOffsetXF = get_res_value_keep(opt,"barOffsetXF",0)
@@ -6073,7 +6312,7 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 undef("add_text_strings")
 procedure add_text_strings(wks,plot,data,opt)
-local txres, xpos, ypos, dims, nrows, cols, format
+local txres, xpos, ypos, dims, nrows, cols, format,str,i,j,hmTxFontColor
 begin
       dims = dimsizes(data)
       nrows = dims(0)
@@ -6083,9 +6322,31 @@ begin
       txres@txJust        = "CenterCenter"
       copy_VarAtts_match(opt,txres,"tx","")
       format = get_res_value_keep(opt, "hmLabelFormat","%0.1f")
+      hasHmTxFontColor = isatt(opt, "hmTxFontColor")
+      hasHmTxFont = isatt(opt, "hmTxFont")
+
+      if(hasHmTxFontColor)
+        hmTxFontColor = opt@hmTxFontColor
+      end if
+      if(hasHmTxFont)
+        hmTxFont = opt@hmTxFont
+      end if
       xpos = conform_dims((/nrows,ncols/),ispan(0,nrows-1,1),0) + 0.5
       ypos = conform_dims((/nrows,ncols/),ispan(0,ncols-1,1),1) + 0.5
-      plot@txid = gsn_add_text(wks,plot,sprintf(format,data),ypos,xpos,txres)
+      do i = 0, nrows-1
+        do j = 0, ncols-1
+          str = unique_string("hmtx")
+          ; print(str)
+          if(hasHmTxFontColor)then
+            txres@txFontColor =  hmTxFontColor(i,j)
+          end if
+          if(hasHmTxFont)then
+            txres@txFont =  hmTxFont(i,j)
+          end if
+          plot@$str$ = gsn_add_text(wks,plot,sprintf(format,data(i,j)),ypos(i,j),xpos(i,j),txres)
+        end do
+      end do
+      ; plot@txid = gsn_add_text(wks,plot,sprintf(format,data),ypos,xpos,txres)
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -6225,7 +6486,6 @@ end if
   end if
 ;---Create a blank plot so gsn_add_polygon function can be used
 	plot = gsn_csm_blank_plot(wks,res)
-
 ;---Fill each grid box according to which level value it is closest to.
   add_filled_boxes(wks,plot,data,levels,colors,res)
 

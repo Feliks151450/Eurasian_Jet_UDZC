@@ -1,3 +1,30 @@
+undef("bandpass")
+function bandpass(ts,ca,cb,opt); ca和cb分别为滤波的范围，即ca-cd
+local fca,fcb,dims,ID,IA,ts0
+begin
+  
+    fca     = 1.0/ca
+    fcb     = 1.0/cb
+    dims    = 0
+    opt@return_envelope = False                  ; time series of filtered *and* envelope values
+    opt@remove_mean = True
+    ; printVarSummary(ts)
+    ID    = bw_bandpass_filter (ts,fca,fcb,opt,dims)  ; index of decadel
+    IA = ts-ID
+    ; opt@filename="filter/"+opt@filename
+    ; opt@trend = False
+    ; opt@rm = 0
+    ts0=IA
+    ts0!0="year"
+    ts0&year=ts&year
+    opt@nameL="IA"
+    opt@nameR="ID"
+    ; opt@legend = True
+    opt@gsnLeftString="bandpass"
+    ; plot = plot_ts(wks,ts0,0,opt)
+    return(ts0)
+end
+
 undef("dtrend_leftdim")
 function dtrend_leftdim(x:numeric, opt[1]:logical)
 ;

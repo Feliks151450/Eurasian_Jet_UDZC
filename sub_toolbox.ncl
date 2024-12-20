@@ -8,6 +8,100 @@ begin
   var&$dimName$ = coord
 end
 
+undef("strIncludes")
+function strIncludes(str,substr)
+begin
+  return isStrSubset(str, substr)
+end
+
+undef("strReplace")
+function strReplace(str,oldStr,newStr)
+begin
+  return str_sub_str(str, oldStr, newStr)
+end
+
+undef("strIndexOf")
+function strIndexOf(str,substr)
+begin
+  return str_index_of_substr(str, substr, 1)
+end
+
+undef("strLastIndexOf")
+function strLastIndexOf()
+begin
+  return str_index_of_substr(str, substr, -1)
+end
+
+undef("strSlice")
+function strSlice(str,startIndex,endIndex)
+begin
+  return str_get_cols([str], startIndex, endIndex)
+end
+
+undef("subStr")
+function subStr(str,startIndex,length)
+begin
+  return str_get_cols([str], startIndex, startIndex+length-1)
+end
+
+undef("strStartsWith")
+function strStartsWith(str,testStr)
+local tem
+begin
+  tem = strSlice(str,0,strlen(testStr)-1)
+  print(tem)
+  return tem .eq. testStr
+end
+
+undef("strEndsWith")
+function strEndsWith(str,testStr)
+local tem
+begin
+  tem = strSlice(str,strlen(str)-strlen(testStr),strlen(str))
+  print(tem)
+  return tem .eq. testStr
+end
+undef("strTrim")
+function strTrim(str)
+begin
+  return str_strip(str)
+end
+undef("strRepeat")
+function strRepeat(str,repeat)
+local tem
+begin
+  tem = ""
+  do i = 0, repeat -1
+    tem = tem+str
+  end do
+  return tem
+end
+undef("bold")
+function bold(str)
+begin
+  return "~F22~"+str+"~F21~"
+end
+
+undef("genItem")
+function genItem(item,type)
+local type_upper
+begin
+  type_upper = str_upper(type)
+  if(type_upper .eq. "NATURE")then
+    return "~F22~"+str_lower(item)+"~F21~"
+  end if
+  if(type_upper .eq. "SCIBULL")then
+    return "~F22~("+str_lower(item)+")~F21~"
+  end if
+  if(type_upper .eq. "SCIENCE")then
+    return "~F22~"+str_upper(item)+"~F21~"
+  end if
+  if(type_upper .eq. "NSR")then
+    return "~F22~"+str_lower(item)+"~F21~"
+  end if
+  return item
+end
+
 undef("checkAtt")
 function checkAtt(res,att)
 begin
@@ -105,6 +199,12 @@ procedure print_error(str[1])
   exit
 end
 
+undef("echo")
+procedure echo(str)
+begin
+  system("echo -e '"+str+"'")
+end
+
 undef("printc")
 procedure printc (str:string,color)
 local dashLineOn,colors,colors_code,pos,pre,lenMax,tem_str,dashLine,output,i,str,tem
@@ -115,11 +215,11 @@ if(ismissing(get_script_name()))
   colors_code = str_get_nl()+(/"","","","",""/)
   pos = str_get_dq()
 else
-  colors_code = str_get_nl()+"\033["+(/"91m","92m","93m","94m","95m"/)
-  pos = "\033[0m"+str_get_dq()
+  colors_code = str_get_nl()+"\e["+(/"91m","92m","93m","94m","95m"/)
+  pos = "\e[0m"+str_get_dq()
 end if
 ; color = get_res_value_keep(opt,"color","purple")
-pre = "echo "+str_get_dq()
+pre = "echo -e "+str_get_dq()
 color_code = colors_code(ind(colors .eq. color))
 if(dashLineOn)
   lenMax = max(strlen(str))
@@ -156,28 +256,27 @@ begin
   return str_concat(tem_str)
 end
 
-undef("echo")
-procedure echo(str)
-begin
-  system("echo '"+str+"'")
-end
-
 undef("progress")
 procedure progress(p[1]:integer)
 local clrs,clrs_code,pre,post,dif
 begin
   clrs =      (/"none","red"    , "green",  "yellow", "blue"  ,"purple"/)
-  clrs_code = (/""    ,"\033[91m" ,"\033[92m",  "\033[93m", "\033[94m","\033[95m"/)
-  post = "\033[0m"
+  clrs_code = (/""    ,"\e[91m" ,"\e[92m",  "\e[93m", "\e[94m","\e[95m"/)
+  post = "\e[0m"
   if(isatt(p, "total"))then
     dif = p@total-p
-    post = repeat(" ",dif)+"]["+p+"/"+p@total+"]"+post
+    if(dif .le. 0)then
+      post = "]["+p+"/"+p@total+"]"+"\n\n\e[K"+post
+    else
+      post = repeat(" ",dif)+"]["+p+"/"+p@total+"]"+post
+    end if
   end if
+  ; print(get_res_value_keep(p, "color", "none"))
   pre = clrs_code(ind(clrs .eq. get_res_value_keep(p, "color", "none")))
   if(p .eq. 0)then
-    echo(pre+"[>"+post)
+    echo(str_get_nl()+"\e[1A"+pre+"[>"+post)
   else
-    echo("\033[1A\033[2K"+pre+"["+repeat("=",p)+">"+post)
+    echo(str_get_nl()+"\e[1A\e[2K"+pre+"["+repeat("=",p)+">"+post)
   end if
 end
 
@@ -296,6 +395,23 @@ begin
   system("open -a /Applications/Visual\ Studio\ Code.app")
 end
 
+undef("show")
+procedure show(fileName[1])
+local type,tem
+begin
+  if(typeof(fileName) .eq. "string")then
+    if(strEndsWith(fileName,"png"))then
+      print("showImage: "+fileName)
+    else
+      print("showImage: "+fileName+".png")
+    end if
+  elseif(NhlIsWorkstation(fileName))then
+    if(isatt(fileName, "path"))
+      print("showImage: "+fileName@path)
+    end if
+  end if
+end
+
 undef("notDrawAndFrame")
 procedure notDrawAndFrame(res)
 begin
@@ -310,6 +426,7 @@ local t
 begin
   t = True
   t@t80 = cdft_t(0.9,df)
+  t@r85  = t@t80/sqrt(df+t@t80^2)
   t@t85 = cdft_t(0.925,df)
   t@r85  = t@t85/sqrt(df+t@t85^2)
   t@t90  = cdft_t(0.95,df)
@@ -326,15 +443,16 @@ end
 undef("R2t")
 function R2t(R,df)
 begin
-  return sqrt(df)*R/sqrt(1-R^2)
+  return sqrt(df)*abs(R)/sqrt(1-R^2)
 end
 
 undef("R2p")
 function R2p(R,df)
-local t
+local t,p
 begin
-  t  = sqrt(df)*R/sqrt(1-R^2)
-  return cdft_p(t, df)
+  t  = sqrt(df)*abs(R)/sqrt(1-R^2)
+  p = cdft_p(t, df)
+  return (1-p)*2
 end
 
 undef("_designal") ; FX| designal
@@ -658,7 +776,11 @@ begin
   do i = 0, dimsizes(atts_name)-1
     ; print(atts_name)
     ; print(atts_name(i))
-    if(.not. isatt(res_from,atts_name(i)))
+    if( .not. isatt(res_from,atts_name(i)))
+      continue
+    end if
+
+    if( atts_name(i) .eq. "lbLabelStrings") then
       continue
     end if
     att_value := res_from@$atts_name(i)$
@@ -740,7 +862,24 @@ end
 ; end
 
 
-
+undef("latWeight")
+function latWeight(X)
+local lat_list,isLat,lat_name,wgt,dimName,Xw
+begin
+  lat_list = (/"lat","Lat","latitude","Latitude"/);可能的纬度名
+  isLat = isdim(X,lat_list); 判断X中是否存在纬度
+  lat_name = lat_list(ind(isLat)) ;获得纬度名
+  sqrtWeight = get_res_value_keep(X, "sqrt", False)
+  if(sqrtWeight)then
+    wgt := sqrt(cos(X&$lat_name$*0.01745329));获得权重
+  else
+    wgt := cos(X&$lat_name$*0.01745329);获得权重
+  end if
+  dimName = getvardimnames(X)
+  Xw := X*conform(X, wgt, ind(dimName .eq. lat_name)); 加权
+  copy_VarCoords(X, Xw)
+  return Xw
+end
 
 
 ; begin
@@ -1141,6 +1280,7 @@ end
 
 undef ("dim_rmvmean_n_Wrap")
 function dim_rmvmean_n_Wrap(x:numeric,dim_arg[1])
+local dims,dim,x_rmvmean
 begin 
   if(typeof(dim_arg) .eq. "string")
     dims = getvardims(x)
