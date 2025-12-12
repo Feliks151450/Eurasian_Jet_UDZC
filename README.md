@@ -1,5 +1,4 @@
-# Code for Eurasian_Jet_UDZS
-
+# Code for manuscript entitled "Emergence of unprecedented zonal-consistent variation in Eurasian jet axis"
 ## This repository contains
 1. **NCL Scripts for the Figures**
    * NC_fig1.ncl
@@ -8,7 +7,7 @@
    * NC_fig4.ncl
    * NC_fig5.ncl
    * NC_fig6.ncl
-
+   * NC_fig7.ncl
 2. **NCL Library neccesary for running Fig.ncl**
    * sub_calc.ncl
    * sub_plot.ncl
