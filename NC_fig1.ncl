@@ -1,5 +1,5 @@
 begin ;记录全局参数
-  localpath := (/"/SSD1/","/SSD1/","/SSD1/","/home/llf/code/ncl/"/)
+  localpath := (/"/SSD1/","/SSD1/","/SSD1/","/home/llf/code/ncl/","/data/"/)
   call_stream = NewList("fifo")
   bufferPath = localpath(1)+"buffer/"
   bufferMode = "disabled"
@@ -23,6 +23,21 @@ load "sub_read.ncl"
 load "sub_calc.ncl"
 load "sub_plot.ncl"
 load "fixBarColor.ncl"
+
+undef("r2pStringDev")
+function r2pStringDev(r,df)
+local p
+begin
+  p = R2p(r,df)
+  if(p .ge. 0.01)then
+    return "p = "+sprintf("%.2f",p)
+  end if
+  if(p .eq. 0)then
+    return "p = 0"
+  end if
+  multi_level = abs(toint(log10(p)))+1
+  return "p = "+sprintf("%.1f",p*10^multi_level)+"~F34~4~F21~10~S~-"+multi_level+"~N~"
+end
 
 undef("readCor")
 function readCor(path)
@@ -138,6 +153,7 @@ local tem_wks,data_mean,data_std,upper,lower
 begin
   data_mean = dim_avg_n_Wrap(data, 0)
   data_std = dim_stddev_n_Wrap(data, 0)
+  ; print(data_std)
   upper = data_mean+0.5*data_std
   lower = data_mean-0.5*data_std
   copy_VarCoords(data_mean, upper)
@@ -194,13 +210,67 @@ end
 
 begin
   ;部分参数
-  folder = localpath(3)+"EurasianJet/Eurasian_figs/" ;"EAJ_plot"
+  test0 = True
+    test0@folder = "test0/"
+    test0@rangeWAJ = (/20, 70, 40, 80./)
+    test0@rangeEAJ = (/20, 70, 90, 123./)
+    test0@window = 21
+
+  test1 = True
+    test1@folder = "test1/"
+    test1@rangeWAJ = (/20, 70, 40, 80./)
+    test1@rangeEAJ = (/20, 70, 90, 130./)
+    test1@window = 21
+
+  test2 = True
+    test2@folder = "test2/"
+    test2@rangeWAJ = (/20, 70, 40, 85./)
+    test2@rangeEAJ = (/20, 70, 90, 130./)
+    test2@window = 21
+
+  test3 = True
+    test3@folder = "test3/"
+    test3@rangeWAJ = (/20, 70, 40, 80./)
+    test3@rangeEAJ = (/20, 70, 90, 135./)
+    test3@window = 21
+
+  test4 = True
+    test4@folder = "test4/"
+    test4@rangeWAJ = (/20, 70, 40, 85./)
+    test4@rangeEAJ = (/20, 70, 90, 135./)
+    test4@window = 21
+
+  test5 = True
+    test5@folder = "test5/"
+    test5@rangeWAJ = (/20, 70, 40, 85./)
+    test5@rangeEAJ = (/20, 70, 90, 140./)
+    test5@window = 21
+
+  test6 = True
+    test6@folder = "test6/"
+    test6@rangeWAJ = (/20, 70, 35, 85./)
+    test6@rangeEAJ = (/20, 70, 90, 140./)
+    test6@window = 21
+
+test7 = True
+  test7@folder = "test7/"
+  test7@rangeWAJ = (/20, 70, 40, 80./)
+  test7@rangeEAJ = (/20, 70, 90, 123./)
+  test7@window = 27
+test = test0
+
+  folder = test@folder ;"EAJ_plot"
+  window = test@window
+  ; window = 27
+  rangeWAJ = test@rangeWAJ
+  rangeEAJ = test@rangeEAJ
+
   setBufferPath(localpath(3)+".buffer/")
   bufferMode = "disabled"
   ; bufferMode = "smart"
-  fig = "pdf"
-    fig@wkPaperWidthF = 20
-    fig@wkPaperHeightF = 20
+  pdf = "pdf"
+    pdf@wkPaperWidthF = 20
+    pdf@wkPaperHeightF = 20
   png = "png"
     png@wkHeight = 2000
     png@wkWidth = 2000
@@ -210,17 +280,12 @@ begin
   year2 := ispan(1999, 2022, 1)
   year01 := ispan(1958, 1998, 1)
   month = (/7,8/)
-  rangeWAJ = (/40, 47, 45, 85/)
-  rangeEAJ = (/40, 47, 90, 130/)
   setDim(year,0,"year",year)
   setDim(year0,0,"year",year0)
   setDim(year1,0,"year",year1)
   WNPSH_level = 5870
   SAH_level = 14360
 ;# ESWJ指数(急流轴强度)
-window = 21
-rangeWAJ := (/20, 70, 40, 80./)
-rangeEAJ := (/20, 70, 90, 123./)
 type := "u"
   type@source = "ERA5"
   type@month := (/7,8/)
@@ -229,7 +294,8 @@ type := "u"
   type@range = (/10,80,-12.5,191/)
 method := "stddev"
   method@detrend = False
-  type@range = (/20,60,30,155/)
+  ; type@range = (/20,60,30,155/)
+  type@range = (/20,60,30,145/)
 U200_sd := process(type,method)
 method := "mean"
   method@detrend = False
@@ -243,6 +309,12 @@ WAJ_index := calcJetAxisStrength(U200)
 U200 := process(type,method)
 EAJ_index := calcJetAxisStrength(U200)
 
+WAJ_minus_EAJ := WAJ_index - EAJ_index
+WAJ_plus_EAJ := WAJ_index + EAJ_index
+copy_VarCoords(WAJ_index, WAJ_minus_EAJ)
+copy_VarCoords(WAJ_index, WAJ_plus_EAJ)
+; print(run_cor(WAJ_index, EAJ_index, window))
+; exit()
 ;# 急流轴计算
 type := "u"
   type@source = "ERA5"
@@ -288,9 +360,6 @@ method = "anom"
   method@detrend = False
 
 ;# 各套数据的急流轴强度指数及滑动相关
-window = 21
-rangeWAJ := (/20, 70, 40, 80./)
-rangeEAJ := (/20, 70, 90, 123./)
 type := "u"
   type@source = "era5"
   type@month := (/7,8/)
@@ -299,16 +368,28 @@ type := "u"
   type@range := rangeEAJ
 method := "mean"
 
-cor_ERA5 = readCor("cor_ERA5.nc")
-cor_ncep2 = readCor("cor_ncep2.nc")
-cor_ncep1 = readCor("cor_ncep1.nc")
-cor_erai = readCor("cor_erai.nc")
-cor_jra55 = readCor("cor_jra55.nc")
-cor_cfs = readCor("cor_cfs.nc")
-cor_20th = readCor("cor_20th.nc")
-cor_era20c = readCor("cor_era20c.nc")
-cor_era20cm = readCor("cor_era20cm.nc")
-cor_cera20c = readCor("cor_cera20c.nc")
+cor_ERA5 = readCor(folder+"cor_ERA5.nc")
+; window = 21
+; rangeWAJ := (/20, 70, 40, 80./)
+; rangeEAJ := (/20, 70, 90, 123./)
+; type := "u"
+;   type@source = "era5"
+;   type@month := (/7,8/)
+;   type@year := ispan(1940, 2022, 1)
+;   type@level = 200
+;   type@range := rangeEAJ
+; method := "mean"
+; cor_ERA5 := calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
+cor_ncep2 = readCor(folder+"cor_ncep2.nc")
+cor_ncep1 = readCor(folder+"cor_ncep1.nc")
+cor_erai = readCor(folder+"cor_erai.nc")
+cor_jra55 = readCor(folder+"cor_jra55.nc")
+cor_cfs = readCor(folder+"cor_cfs.nc")
+cor_20thCRv3 = readCor(folder+"cor_20thcrv3_members.nc")
+cor_20thCRv3_mean = dim_avg_n_Wrap(cor_20thCRv3, 0)
+; cor_era20c = readCor("cor_era20c.nc")
+cor_era20c = readCor(folder+"cor_20c_40.nc")
+cor_cera20c = readCor(folder+"cor_cera20c.nc")
 cor_cera20c_mean = dim_avg_n_Wrap(cor_cera20c, 0)
 
 year_all = ispan(1900, 2022, 1)
@@ -319,42 +400,38 @@ year0 := ispan(1958, 1978, 1)
 year1 := ispan(1979, 1998, 1)
 year2 := ispan(1999, 2022, 1)
 plot := newPlots(8)
-fileName = "NC_fig1"
-wks := gsn_open_wks(png,fileName)
+fileName = folder+"NC_fig1"
+wks := gsn_open_wks(pdf,fileName)
 labelColor = "#434343"
 
-;# Fig1C
+;# Fig1C 下半部分
 itemType = "Nature"
 opt := True
 t = t_value(window-2)
 notDrawAndFrame(opt)
-  opt@minmax = (/-0.5,0.85/)
-  opt@vpWidthF = 1.45
+  opt@minmax = (/-0.35,0.85/)
+  opt@vpWidthF = 1.525
   opt@vpHeightF = 0.55
   opt@gsnXYBarChart = False
   opt@extend = -9
   opt@xyLineThicknessF = 3.
-  opt@gsnLeftString = genItem("c",itemType)
+  opt@gsnLeftString = "";genItem("c",itemType)
   opt@gsnLeftStringFontHeightF = 0.037
   ; opt@gsnLeftStringOrthogonalPosF = 0.05
   opt@gsnLeftStringOrthogonalPosF = -0.09
   opt@gsnLeftStringParallelPosF = -0.05
-  ; opt@gsnLeftStringParallelPosF = 0.2
-  opt@gsnRightString = "~F22~Evolution of Corr (WJA, EJA)"
-  opt@gsnRightStringFontHeightF = 0.035
-  opt@gsnRightStringOrthogonalPosF = -0.105
-  ; opt@gsnRightStringParallelPosF = 0.7
-  opt@gsnRightStringParallelPosF = 0.48
-  ; opt@gsnRightStringFontColor = "#222222"
-  opt@gsnRightStringFontColor = "white"
-  ; opt@gsnRightStringFontColor = "Black"
-  opt@tmYLValues = (/-0.3,0,0.3,0.6/)
+  opt@gsnRightString = ""
+  opt@tiXAxisString = "Mid-year of "+window+"-yr sliding window"
+  opt@tiXAxisFontHeightF = 0.025
+  opt@tiXAxisOffsetYF = 0.07
+  opt@tiXAxisFontColor = "Grey29"
+  opt@tmYLValues = (/-0.3,0,0.3,0.6,0.8/)
   opt@tmYLLabelFontHeightF = 0.03
   opt@tmYLLabelFontColor = labelColor
   opt@tmXBLabelFontHeightF = 0.03
   opt@tmXBLabelFontColor = labelColor
   ; opt@tmXBLabelFont = 5
-  opt@trXMinF = 1909
+  opt@trXMinF = 1950
   opt@trXMaxF = 2015
   opt@tmXTBorderOn = False
   opt@tmYRBorderOn = False
@@ -362,9 +439,9 @@ notDrawAndFrame(opt)
   opt@tmYRMode = "Explicit"
   ; opt@tmYRValues = (/t@r95,t@r999/)
   opt@tmYRValues = (/t@r95/)
-  opt@tmYRLabels = (/"95%","99.9%"/)
+  opt@tmYRLabels = (/"95%","99%"/)
   opt@tmYRLabelsOn = True
-  opt@tmYRLabelFontColor = "DodgerBlue"
+  opt@tmYRLabelFontColor = "DimGray"
   opt@tmYRLabelFont = 22
   opt@tmYRLabelFontHeightF = 0.025
   opt@tmYRLabelDeltaF = -1.55
@@ -373,17 +450,70 @@ notDrawAndFrame(opt)
   opt@tmYRMajorLineColor = "transparent"
   opt@xyLineColor = "#076483"
   ; opt@xyLineColor = "#8ab18a"
+  opt@xyLineThicknessF = 2.
+  opt@xyLineColor = "#8ab18a"
   ; opt@xyLineColor = "MediumPurple"
-  opt@tiXAxisString = "Mid-year of 21-yr sliding window"
-  opt@tiXAxisFontHeightF = 0.025
-  opt@tiXAxisOffsetYF = 0.
-  opt@tiXAxisFontColor = "Grey29"
+
   opt@gsnYRefLineColor = "transparent"
   opt@Yref = -10;不显示
   opt@vpClipOn = False
+  opt@tmXBLabelsOn = True
   ; opt@gsnYRefLine = -10
   ; opt@tmXTBorderOn = False
   ; opt@tmYLFormat = "0@;*.2f"
+  opt@tmXBLabelDeltaF = -0.7
+; plot(3) = plot_ts(wks,cor_era20c,opt)
+plot(3) = plot_ts(wks,cor_20thCRv3_mean,opt)
+res_line := True
+  res_line@gsLineThicknessF = 5
+  res_line@gsLineDashPattern = 16
+  res_line@gsLineColor = "DimGray"
+; add_line(plot(3),(/1993,1993/),(/-0.4,0.73/),res_line)
+
+text = "1993"
+  text@txFontColor = "DimGray"
+  text@txFontHeightF = 0.026
+; add_text(plot(3),text,1993,0.77)
+;# Fig.1C 上半部分
+  ; opt@gsnLeftStringParallelPosF = 0.2
+  opt@gsnRightString = "~F22~Evolution of R (WJA, EJA)"
+  opt@gsnRightStringFontHeightF = 0.035
+  opt@gsnRightStringOrthogonalPosF = -0.125
+  ; opt@gsnRightStringParallelPosF = 0.7
+  opt@gsnRightStringParallelPosF = 0.4
+  ; opt@gsnRightStringFontColor = "#222222"
+  opt@gsnRightStringFontColor = "white"
+  ; opt@gsnRightStringFontColor = "Black"
+  opt@trXMinF = 1815
+  opt@trXMaxF = 1949
+  opt@tiXAxisString = "Mid-year of "+window+"-yr sliding window"
+  opt@tiXAxisOffsetYF = 0.07
+  opt@tmXBTickSpacingF = 20
+  opt@tmXBTickStartF = 1820
+  opt@gsnLeftString = genItem("c",itemType)
+  opt@gsnLeftStringOrthogonalPosF = -0.05
+  opt@minmax = (/-0.35,0.75/)
+  opt@vpHeightF = 0.48
+  ; opt@vpHeightF = 0.38
+  opt@tmYROn = False
+  opt@tmXBLabelsOn = True
+  opt@tmXBLabelDeltaF = -0.7
+  opt@tmYRBorderOn = False
+  opt@tmYROn = True
+  opt@tmYRMode = "Explicit"
+  ; opt@tmYRValues = (/t@r95,t@r999/)
+  opt@tmYRValues = (/t@r95/)
+  opt@tmYRLabels = (/"95%","99%"/)
+  opt@tmYRLabelsOn = True
+  opt@tmYRLabelFontColor = "DimGray"
+  opt@tmYRLabelFont = 22
+  opt@tmYRLabelFontHeightF = 0.025
+  opt@tmYRLabelDeltaF = -1.55
+  opt@tmYRMajorLineColor = "DodgerBlue"
+  opt@tmYRMajorThicknessF = 5
+  opt@tmYRMajorLineColor = "transparent"
+  opt@xyLineColor = "#076483"
+  opt@xyLineThicknessF = 3.
 plot(0) = plot_ts(wks,cor_era20c,opt)
 
 ;# 绿框
@@ -398,17 +528,17 @@ res_box := True
 ; add_box(plot(0),1950,1.0,14,0.7,res_box)
 ; x := 0.495
 ; x := 0.2795;最左端
-x := 0.2895;最左端.加粗下
-y := 0.601
+x := 0.255;最左端.加粗下
+y := 0.646
 ; width := 0.21
-width := 0.22
+width := 0.185
 height := 0.02
 polyXF := (/x-width,x-width,x+width,x+width,x-width/)
 polyYF := (/y-height,y+height,y+height,y-height,y-height/)
 gsn_polygon_ndc(wks, polyXF, polyYF, res_box)
-x := 0.8425;最左端.加粗下
+x := 0.837;最左端.加粗下
 y := 0.975
-width := 0.0965
+width := 0.102
 height := 0.016
 polyXF := (/x-width,x-width,x+width,x+width,x-width/)
 polyYF := (/y-height,y+height,y+height,y-height,y-height/)
@@ -418,11 +548,18 @@ gsn_polygon_ndc(wks, polyXF, polyYF, res_box)
 pgres := (/-10,10,min(year2)-0.5,2019/)
   pgres@gsFillOpacityF = 0.1
   pgres@gsFillColor = "#ff8747"
-add_fillBox(plot(0),pgres)
+add_fillBox(plot(3),pgres)
 
   opt@xyLineThicknessF = 2.
   opt@xyLineColor = "#8ab18a"
-add_ts(plot(0),cor_20th,opt)
+; add_ts(plot(3),cor_20thCRv3_mean,opt)
+add_ts(plot(0),cor_20thCRv3_mean,opt)
+rshade := True
+  ; rshade@gsFillColor = "MediumPurple"
+  rshade@gsFillColor = "#8ab18a"
+addSpreading(plot(0),cor_20thCRv3,rshade)
+addSpreading(plot(3),cor_20thCRv3,rshade)
+
 line := "20thCRV3"
   line@txFontHeightF = 0.024
   line@gsLineThicknessF = 3.
@@ -434,98 +571,116 @@ line := "20thCRV3"
   line@gsLineDashPattern = opt@xyDashPattern  
   ; print(ismissing(line@gsLineDashPattern))
 ; add_line(plot(0),(/1912,1917/),(/-0.4,-0.4/),line)
-add_text(plot(0),line,1976.5,-0.4)
+add_text(plot(0),line,1819,0.45)
+add_text(plot(3),line,1954,0.625)
 
-text := "99.9%"
-  text@txFontColor = "red"
+text := "R~S~2~N~ = 30%"
+  text@txFontColor = "DodgerBlue"
   text@txFont = 22
   text@txFontHeightF = 0.025
-add_string(plot(0),text,1.035,1)
+add_string(plot(3),text,0.95,0.885)
 
   opt@xyLineColor = "MediumPurple"
   opt@xyDashPattern = 0
   opt@xyLineThicknessF = 4
+add_ts(plot(3),cor_cera20c_mean,opt)
 add_ts(plot(0),cor_cera20c_mean,opt)
 ; add_ts(plot(0),cor_era20c,opt)
 rshade := True
   ; rshade@gsFillColor = "MediumPurple"
   rshade@gsFillColor = "MediumPurple"
 addSpreading(plot(0),cor_cera20c,rshade)
+addSpreading(plot(3),cor_cera20c,rshade)
 line = "CERA-20C"
   line@txFontColor = opt@xyLineColor
   line@gsLineColor = opt@xyLineColor
 ; add_line(plot(0),(/1938,1943/),(/-0.4,-0.4/),line)
-add_text(plot(0),line,1989.5,-0.4)
+add_text(plot(0),line,1835,0.45)
+add_text(plot(3),line,1962.5,0.625)
+; add_text(plot(3),line,1989.5,-0.4)
 
 
 
-
-
-
-tval := (/t@r95/)
+tval := (/t@r95/);0.43
   tval@polyYRefDashPattern = 1
   tval@polyYRefMin = 1988
   tval@polyYRefMax = 2014
+  tval@polyYRefColor = "DimGray"
+add_Yref(plot(3),tval)
+  tval@polyYRefMin = 1885
+  tval@polyYRefMax := 1947.9
 add_Yref(plot(0),tval)
-tval := (/t@r999/)
-  tval@polyYRefDashPattern = 1
-  tval@polyYRefMin = 1988
-  tval@polyYRefMax = 2014
-  tval@polyYRefColor = "red"
-add_Yref(plot(0),tval)
+tval := (/sqrt(0.3)/)
+; tval := (/sqrt(0.5)/)
+  tval@polyYRefDashPattern = 2
+  ; tval@xyDashPattern
+  tval@polyYRefMin = 1998
+  tval@polyYRefMax := 2008
+  tval@polyYRefColor = "DodgerBlue"
+add_Yref(plot(3),tval)
 line = "ERA-5"
   line@txFontColor = "Red"
   line@gsLineColor = "Red"
 
 ; add_line(plot(0),(/1912,1917/),(/0.75,0.75/),line)
-add_text(plot(0),line,1911,-0.4)
+add_text(plot(3),line,1952,0.77)
 
   ; opt@xyLineColor = "#3434ff"
   opt@xyLineColor = "DimGrey"
   opt@xyLineThicknessF = 10.
-add_ts(plot(0),cor_ncep2,opt)
-line = "NCEP-DOE"
+add_ts(plot(3),cor_ncep2,opt)
+line = "NCEP/DOE-R2"
   line@txFontColor = opt@xyLineColor
   line@gsLineColor = opt@xyLineColor
 ; add_line(plot(0),(/1912,1917/),(/0.55,0.55/),line)
-add_text(plot(0),line,1937.5,-0.4)
+add_text(plot(3),line,1971.5,0.77)
   opt@xyLineColor = "#f3a13c"
   opt@xyLineThicknessF = 7
-line = "NCEP/NCAR"
+line = "NCEP/NCAR-R1"
   line@txFontColor = opt@xyLineColor
   line@gsLineColor = opt@yLineColor
 ; add_line(plot(0),(/1940,1945/),(/0.55,0.55/),line)
-add_text(plot(0),line,1952,-0.4)
-add_ts(plot(0),cor_ncep1,opt)
+add_text(plot(3),line,1971.5,0.625)
+add_ts(plot(3),cor_ncep1,opt)
 
   ; opt@xyLineColor = "Magenta"
   opt@xyLineColor = "#3434ff"
 
   opt@xyLineThicknessF = 7.
   opt@xyDashPattern = 0
-add_ts(plot(0),cor_erai,opt)
+add_ts(plot(3),cor_erai,opt)
   opt@xyLineThicknessF = 7.
-line = "ERA-I"
+line = "ERA-Interim"
   line@txFontColor = opt@xyLineColor
   line@gsLineColor = opt@xyLineColor
   line@gsLineDashPattern = opt@xyDashPattern
 ; add_line(plot(0),(/1960,1965/),(/-0.4,-0.4/),line)
-add_text(plot(0),line,1929,-0.4)
+add_text(plot(3),line,1963,0.77)
 
-  opt@xyLineColor = "#72c8e4"
+  opt@xyLineColor = "#076483"
   opt@xyLineThicknessF = 3.
   opt@xyDashPattern = 0
 ; add_ts(plot(0),cor_era20c,opt)
 line = "ERA-20C"
+; line = "ERA-20C & ERA-40"
   line@txFontColor = opt@xyLineColor
   line@gsLineColor = opt@xyLineColor
 ; add_line(plot(0),(/1965,1970/),(/-0.4,-0.4/),line)
-add_text(plot(0),line,2003.5,-0.4)
+add_text(plot(0),line,1853,0.45)
+line = "ERA-20C (1950-1957) & ERA-40 (1958-2002)"
+add_text(plot(3),line,1954,0.49)
+
+text = "Strong UDZC period"
+  text@txFontColor = "#ff5151"
+  text@txFont = 21
+  ; text@tx
+add_text(plot(3),text,2007,0)
+text = "R~S~2~N~ exceeding 30%"
+add_text(plot(3),text,2007,-0.1)
 
 ;   opt@xyLineColor = "green"
 ;   opt@xyLineThicknessF = 7.
 ;   opt@xyDashPattern = 0
-; add_ts(plot(0),cor_era20cm,opt)
 ; line = "ERA-20CM"
 ;   line@gsLineColor = opt@xyLineColor
 ; add_line(plot(0),(/1965,1970/),(/-0.4,-0.4/),line)
@@ -533,31 +688,37 @@ add_text(plot(0),line,2003.5,-0.4)
 opt@xyLineColor = "ForestGreen"
 opt@xyLineThicknessF = 7.
   opt@xyDashPattern = 0
-add_ts(plot(0),cor_jra55,opt)
+add_ts(plot(3),cor_jra55,opt)
 line = "JRA-55"
   line@txFontColor = opt@xyLineColor
   line@gsLineColor = opt@xyLineColor
   line@gsLineDashPattern = opt@xyDashPattern
 
 ; add_line(plot(0),(/1935,1940/),(/0.75,0.75/),line)
-add_text(plot(0),line,1919.5,-0.4)
+add_text(plot(3),line,1957,0.77)
 
   opt@xyLineColor = "Black"
   opt@xyDashPattern = 0
   opt@xyLineThicknessF = 7.
   ; opt@xyDashPattern = 2
-add_ts(plot(0),cor_cfs,opt)
+add_ts(plot(3),cor_cfs,opt)
 line = "CFSR"
   line@txFontColor = opt@xyLineColor
   line@gsLineColor = opt@xyLineColor
   line@gsLineDashPattern = opt@xyDashPattern
 ; add_line(plot(0),(/1970,1975/),(/0.55,0.55/),line)
-add_text(plot(0),line,1968,-0.4)
+add_text(plot(3),line,1982,0.77)
 
   opt@xyLineColor = "Red"
   opt@xyDashPattern = 0
   opt@xyLineThicknessF = 12
+add_ts(plot(3),cor_ERA5,opt)
 add_ts(plot(0),cor_ERA5,opt)
+
+  opt@xyLineColor = "#076483"
+  opt@xyDashPattern = 0
+  opt@xyLineThicknessF = 5
+add_ts(plot(3),cor_era20c,opt)
 
 ;# Fig1a 地球
 opt := True
@@ -578,6 +739,7 @@ notDrawAndFrame(opt)
   opt@mpMinLatF = 0
   opt@mpMaxLonF = 150
   opt@mpMinLonF = 0
+
   opt@mpPerimOn         = False 
   opt@gsnMaximize = False
   opt@mpGeophysicalLineThicknessF = 0.5
@@ -626,9 +788,9 @@ notDrawAndFrame(opt)
   opt@cnLinesOn = False
   opt@cnLineThicknessF = 5.
   opt@cnLineDashPattern = 0
-  opt@cnLevels := (/22,24,26,28,30,32,34/)
+  opt@cnLevels := (/22,24,26,28,30,32/)
   ; opt@cnFillColors := (/"transparent","#F28D75","#EE6B54","#EA463B","#E82229","#BE252B","#871E20","#6B1014"/)
-  opt@cnFillColors := (/"transparent","#c3d9bb","#aecda4","#9ac392","#89bc86","#79b77a","#4ea250","#368237"/)
+  opt@cnFillColors := (/"transparent","#c3d9bb","#aecda4","#9ac392","#89bc86","#79b77a","#368237"/);,"#368237"/)
   opt@lbLabelStride = 2
   opt@lbLabelFormat = "%0.0f"
 add_clim(plot(1),type,range,opt)
@@ -663,12 +825,17 @@ add_cn(plot(1),U200_sd,range,opt)
     line@gsLineColor = "#0082df"
     line@txJust = "BottomLeft"
     line@txFontColor = "#0082df"
-  lat_JA_WAJ = lat_JA({40:80})
-  lat_JA_EAJ = lat_JA({90:123})
+  lat_JA_WAJ = lat_JA({rangeWAJ(2):rangeWAJ(3)})
+  lat_JA_EAJ = lat_JA({rangeEAJ(2):rangeEAJ(3)})
+  lat_JA_Center = lat_JA({rangeWAJ(3):rangeEAJ(2)})
   add_line(plot(1),lat_JA_WAJ&lon,lat_JA_WAJ,line)
     line@gsLineColor = "red"
     line@txFontColor = "red"
   add_line(plot(1),lat_JA_EAJ&lon,lat_JA_EAJ,line)
+    line@gsLineColor = "white"
+    line@gsLineThicknessF = 20
+    line@txFontColor = "white"
+  ; add_line(plot(1),lat_JA_Center&lon,lat_JA_Center,line)
 box := (/0,90,rangeEAJ(2),rangeEAJ(3)/)
   box@gsLineThicknessF = 8.
   box@gsFillOpacityF = 0.2
@@ -712,31 +879,35 @@ notDrawAndFrame(res_ts)
   res_ts@tmXTBorderOn = False
   res_ts@gsnXYBarChartColors = "red"
   res_ts@gsnLeftString = genItem("B",itemType)
-  res_ts@gsnLeftStringParallelPosF = -0.065
+  res_ts@gsnLeftStringParallelPosF = -0.09
   res_ts@gsnLeftStringOrthogonalPosF = 0.025
   res_ts@gsnLeftStringFontHeightF = 0.035
   R = escorc(EAJ_index({year2}), WAJ_index({year2}))
-  P = R2p(R,dimsizes(year2)-2)
-  res_ts@gsnRightString = "~F22~R2 = "+sprintf("%.2f",R)+"~F21~, p < 1e-5"
-  res_ts@gsnRightStringFontHeightF = 0.0265
+  df = dimsizes(year2)-2
+  ; P = R2p(R,df)
+  res_ts@gsnRightString = "~F22~R2 = "+sprintf("%.2f",R)+"~F21~, "+r2pStringDev(R,df)
+  res_ts@gsnRightStringFontHeightF = 0.023
   res_ts@gsnRightStringFontColor = "White"
-  res_ts@gsnRightStringParallelPosF = 0.993
+  res_ts@gsnRightStringParallelPosF = 0.99
   res_ts@gsnRightStringOrthogonalPosF = 0.01
   res_ts@tiXAxisString = "Year"
   res_ts@tiXAxisFontHeightF = 0.023
   res_ts@tiXAxisOffsetYF = 0.01
   res_ts@tiYAxisString = "m s~S~-1~N~"
   res_ts@tiYAxisFontHeightF = 0.023
+  res_ts@tiYAxisOffsetXF = 0.025
   res_ts@vpHeightF = 0.38
-  res_ts@vpWidthF = 0.865
+  res_ts@vpWidthF = 0.915
   res_ts@tmXBLabelFontHeightF = 0.025
   res_ts@tmYLLabelFontHeightF = 0.025
+  res_ts@tmYLLabels = (/"-7","0","7"/)
+  res_ts@tmYLFormat = "%0.0f"
   ; res_ts@tmYLValues = (/-8,-4,0.0,4,8/)
   res_ts@tmYLValues = (/-7,0,7/)
   res_ts@trXMaxF = 2023
 EAJ_index = dim_rmvmean_Wrap(EAJ_index)
-EAJ_index({year01}) = (/dim_rmvmean_Wrap(EAJ_index({year01}))/)
-EAJ_index({year2}) = (/dim_rmvmean_Wrap(EAJ_index({year2}))/)
+; EAJ_index({year01}) = (/dim_rmvmean_Wrap(EAJ_index({year01}))/)
+; EAJ_index({year2}) = (/dim_rmvmean_Wrap(EAJ_index({year2}))/)
 plot(2) = plot_ts(wks,EAJ_index,res_ts)
 nblc = newBoldHolyCircle(wks)
 pgres := (/-10,11,1998.5,2023/)
@@ -749,9 +920,26 @@ add_fillBox(plot(2),pgres)
   res_ts@xyMarkers = nblc
   res_ts@xyMarkerSizeF = 0.013
 WAJ_index = dim_rmvmean_Wrap(WAJ_index)
-WAJ_index({year01}) = (/dim_rmvmean_Wrap(WAJ_index({year01}))/)
-WAJ_index({year2}) = (/dim_rmvmean_Wrap(WAJ_index({year2}))/)
+; WAJ_index({year01}) = (/dim_rmvmean_Wrap(WAJ_index({year01}))/)
+; WAJ_index({year2}) = (/dim_rmvmean_Wrap(WAJ_index({year2}))/)
 add_ts(plot(2),WAJ_index,res_ts)
+  res_ts@xyMarkLineMode = "MarkLines"
+  res_ts@xyLineColor = "#00a700"
+  res_ts@xyLineThicknessF = 10
+  res_ts@xyMarkers = 16
+  res_ts@xyMarkerSizeF = 0.015
+; WAJ_plus_EAJ = dim_standardize_Wrap(WAJ_plus_EAJ, 0)
+; WAJ_plus_EAJ = (/WAJ_plus_EAJ*0.5/)
+; WAJ_plus_EAJ = dim_rmvmean_Wrap(WAJ_plus_EAJ)
+
+; add_ts(plot(2),WAJ_plus_EAJ,res_ts)
+
+; WAJ_minus_EAJ = (/WAJ_minus_EAJ*0.5/)
+WAJ_minus_EAJ = dim_rmvmean_Wrap(WAJ_minus_EAJ)
+
+; add_ts(plot(2),WAJ_minus_EAJ,res_ts)
+
+
   ; res_ts@xyMarkLineMode = "Markers"
 ; add_ts(plot(2),WAJ_index({year2}),res_ts)
 
@@ -759,13 +947,13 @@ text := "WJA"
   text@txFontColor = "#0082df"
   text@txJust = "CenterLeft"
 textY = 1.24
-add_string(plot(2),text,0.01,textY)
-text = "&         Index"
+add_string(plot(2),text,-0.03,textY)
+text = "&        Index, ERA-5"
   text@txFontColor = "Black"
-add_string(plot(2),text,0.145,textY)
+add_string(plot(2),text,0.095,textY)
 text = "EJA"
   text@txFontColor = "red"
-add_string(plot(2),text,0.20,textY)
+add_string(plot(2),text,0.14,textY)
 R = escorc(EAJ_index({year01}), WAJ_index({year01}))
 P = R2p(R,dimsizes(year01)-2)
 print(P)
@@ -779,17 +967,20 @@ resp := True
   resp@gsnPanelScalePlotIndex = 1
   resp@gsnPanelYWhiteSpacePercent = 5.
   resp@gsnPanelRowSpec = True
-  resp@gsnPanelXF = (/0.07,0.025,0.42/)
-  resp@gsnPanelYF = (/0.62,0.96,0.96/)
-  resp@gsnPanelScaleF = (/0.6,0.25,0.6/)
+  resp@gsnPanelXF = (/0.07,0.025,0.39,0.07/)
+  resp@gsnPanelYF = (/0.665,0.96,0.96,0.347/)
+  resp@gsnPanelScaleF = (/0.57,0.25,0.6,0.57/)
   resp@gsnMaximize = True
   ; resp@gsnPanelLeft = -0.1
   ; resp@gsnPanelDebug = True
   ; resp@gsnPanelGridYF = 0.4
-gsn_panel(wks,plot(0:2),(/3/),resp)
+gsn_panel(wks,plot(0:3),(/4/),resp)
 
 
 frame(wks)
-; delete(wks)
-show(fileName+".png")
+delete(wks)
+; print(fileName)
+system("gs -q -sDEVICE=png16m -sBATCH -sOutputFile="+fileName+".png -dNOPAUSE -r200 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "+fileName+".pdf")
+fullPath = "/home/llf/code/ncl/EurasianJet/UDZS_Code/"+fileName
+show(fullPath)
 end

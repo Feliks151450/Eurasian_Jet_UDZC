@@ -1,5 +1,5 @@
 begin ;记录全局参数
-  localpath := (/"/SSD1/","/SSD1/","/SSD1/","/home/llf/code/ncl/"/)
+  localpath := (/"/SSD1/","/SSD1/","/SSD1/","/home/llf/code/ncl/","/data/"/)
   call_stream = NewList("fifo")
   bufferPath = localpath(1)+"buffer/"
   bufferMode = "disabled"
@@ -22,6 +22,23 @@ load "sub_read.ncl"
 load "sub_calc.ncl"
 load "sub_plot.ncl"
 load "fixBarColor.ncl"
+
+
+undef("r2pStringDev")
+function r2pStringDev(r,df)
+local p
+begin
+  p = R2p(r,df)
+  if(p .ge. 0.01)then
+    return "p = "+sprintf("%.2f",p)
+  end if
+  if(p .eq. 0)then
+    return "p = 0"
+  end if
+  multi_level = abs(toint(log10(p)))+1
+  return "p = "+sprintf("%.1f",p*10^multi_level)+"~F34~4~F21~10~S~-"+multi_level+"~N~"
+end
+
 
 undef("readCor")
 function readCor(path)
@@ -239,13 +256,59 @@ end
 
 begin
   ;部分参数
+  test0 = True
+    test0@folder = "test0/"
+    test0@rangeWAJ = (/20, 70, 40, 80./)
+    test0@rangeEAJ = (/20, 70, 90, 123./)
+    test0@window = 21
+
+  test1 = True
+    test1@folder = "test1/"
+    test1@rangeWAJ = (/20, 70, 40, 80./)
+    test1@rangeEAJ = (/20, 70, 90, 130./)
+    test1@window = 21
+
+  test2 = True
+    test2@folder = "test2/"
+    test2@rangeWAJ = (/20, 70, 40, 85./)
+    test2@rangeEAJ = (/20, 70, 90, 130./)
+    test2@window = 21
+
+  test3 = True
+    test3@folder = "test3/"
+    test3@rangeWAJ = (/20, 70, 40, 80./)
+    test3@rangeEAJ = (/20, 70, 90, 135./)
+    test3@window = 21
+
+  test4 = True
+    test4@folder = "test4/"
+    test4@rangeWAJ = (/20, 70, 40, 85./)
+    test4@rangeEAJ = (/20, 70, 90, 135./)
+    test4@window = 21
+
+  test5 = True
+    test5@folder = "test5/"
+    test5@rangeWAJ = (/20, 70, 40, 85./)
+    test5@rangeEAJ = (/20, 70, 90, 140./)
+    test5@window = 21
+
+  test6 = True
+    test6@folder = "test6/"
+    test6@rangeWAJ = (/20, 70, 35, 85./)
+    test6@rangeEAJ = (/20, 70, 90, 140./)
+    test6@window = 21
+  
+  test = test0
+
+  ;部分参数
   folder = localpath(3)+"EurasianJet/Eurasian_figs/" ;"EAJ_plot"
   setBufferPath(localpath(3)+".buffer/")
   bufferMode = "disabled"
+  sigLevel = 95
   ; bufferMode = "smart"
-  fig = "pdf"
-    fig@wkPaperWidthF = 20
-    fig@wkPaperHeightF = 20
+  pdf = "pdf"
+    pdf@wkPaperWidthF = 20
+    pdf@wkPaperHeightF = 20
   png = "png"
     png@wkHeight = 2000
     png@wkWidth = 2000
@@ -255,8 +318,11 @@ begin
   year2 := ispan(1999, 2022, 1)
   year01 := ispan(1958, 1998, 1)
   month = (/7,8/)
-  rangeWAJ = (/40, 47, 45, 85/)
-  rangeEAJ = (/40, 47, 90, 130/)
+  ; rangeWAJ = (/40, 47, 45, 85/)
+  ; rangeEAJ = (/40, 47, 90, 130/)
+
+  rangeWAJ = test@rangeWAJ
+  rangeEAJ = test@rangeEAJ
   setDim(year,0,"year",year)
   setDim(year0,0,"year",year0)
   setDim(year1,0,"year",year1)
@@ -265,8 +331,6 @@ begin
   SAH_level = 14360
 ;# ESWJ指数(急流轴强度)
 window = 21
-rangeWAJ := (/20, 70, 40, 80./)
-rangeEAJ := (/20, 70, 90, 123./)
 type := "u"
   type@source = "ERA5"
   type@month := (/7,8/)
@@ -297,7 +361,6 @@ EAJ_index := calcJetAxisStrength(U200)
 ;# 投影指数
 f = addfile("ESWJ_index.nc", "r")
 EWJA = f->EWJA_modified
-
 EWJA01 = dim_standardize_Wrap(EWJA({year01}), 0)
 EWJA1 = dim_standardize_Wrap(EWJA({year1}), 0)
 EWJA2 = dim_standardize_Wrap(EWJA({year2}), 0)
@@ -328,7 +391,14 @@ lat_MJ := runave_Wrap(lat_MJ, 7, 0)
 U200_clim := process(type,method)
 lat_JA := getJetLats(U200_clim)
 lat_JA := runave_Wrap(lat_JA, 7, 0)
-
+  type@year := year01
+U200_clim := process(type,method)
+lat_JA_P1 = getJetLats(U200_clim)
+lat_JA_P1 := runave_Wrap(lat_JA_P1, 7, 0)
+  type@year := year2
+U200_clim := process(type,method)
+lat_JA_P2 = getJetLats(U200_clim)
+lat_JA_P2 := runave_Wrap(lat_JA_P2, 7, 0)
 ;# EOF计算
 ; year0 := ispan(1958, 1978, 1)
 ; year1 := ispan(1979, 1998, 1)
@@ -436,8 +506,6 @@ SAH_l := process(type_l,opt)
 
 ;# 各套数据的急流轴强度指数及滑动相关
 window = 21
-rangeWAJ := (/20, 70, 40, 80./)
-rangeEAJ := (/20, 70, 90, 123./)
 type := "u"
   type@source = "era5"
   type@month := (/7,8/)
@@ -446,17 +514,17 @@ type := "u"
   type@range := rangeEAJ
 method := "mean"
 
-cor_ERA5 = readCor("cor_ERA5.nc")
-cor_ncep2 = readCor("cor_ncep2.nc")
-cor_ncep1 = readCor("cor_ncep1.nc")
-cor_erai = readCor("cor_erai.nc")
-cor_jra55 = readCor("cor_jra55.nc")
-cor_cfs = readCor("cor_cfs.nc")
-cor_20th = readCor("cor_20th.nc")
-cor_era20c = readCor("cor_era20c.nc")
-cor_era20cm = readCor("cor_era20cm.nc")
-cor_cera20c = readCor("cor_cera20c.nc")
-cor_cera20c_mean = dim_avg_n_Wrap(cor_cera20c, 0)
+; cor_ERA5 = readCor("cor_ERA5.nc")
+; cor_ncep2 = readCor("cor_ncep2.nc")
+; cor_ncep1 = readCor("cor_ncep1.nc")
+; cor_erai = readCor("cor_erai.nc")
+; cor_jra55 = readCor("cor_jra55.nc")
+; cor_cfs = readCor("cor_cfs.nc")
+; cor_20th = readCor("cor_20th.nc")
+; cor_era20c = readCor("cor_era20c.nc")
+; cor_era20cm = readCor("cor_era20cm.nc")
+; cor_cera20c = readCor("cor_cera20c.nc")
+; cor_cera20c_mean = dim_avg_n_Wrap(cor_cera20c, 0)
 
 year_all = ispan(1900, 2022, 1)
 
@@ -467,12 +535,16 @@ year1 := ispan(1979, 1998, 1)
 year2 := ispan(1999, 2022, 1)
 plot := newPlots(9)
 fileName = "NC_fig3"
-wks := gsn_open_wks(png,fileName)
+pdf@gsnPaperOrientation = "portrait"
+wks := gsn_open_wks(pdf,fileName)
+wks@gsnPaperOrientation = "portrait"
 labelColor = "#434343"
 
-;# 底图
+;# b-g底图
 itemType = "Nature"
-
+FDRRange = (/0,90,0,150/)
+FDRRange@gsLineColor = "Firebrick1"
+FDRRange@gsLineThicknessF = 10
 
 ts0 := EWJA01
 ts2 := EWJA2
@@ -484,7 +556,7 @@ notDrawAndFrame(opt)
   opt@vpWidthF = 0.85
   opt@tmYLLabelsOn = True
   ; opt@gsnLeftString = (/"EOF1 "+min(year0)+"-"+max(year0),min(year1)+"-"+max(year1),min(year2)+"-"+max(year2)/)
-  opt@gsnLeftStringFontHeightF = 0.045
+  opt@gsnLeftStringFontHeightF = 0.05
   opt@gsnLeftStringParallelPosF = 0.03
   opt@gsnLeftStringOrthogonalPosF = -0.09
   opt@gsnCenterStringFontHeightF = 0.045
@@ -498,30 +570,32 @@ notDrawAndFrame(opt)
   opt@mpMinLatF = 7
   opt@mpMaxLonF = 170
   opt@mpMinLonF = 0
-  opt@mpGridAndLimbOn = True
+  opt@mpGridAndLimbOn = False
   opt@mpGridLineThicknessF = 0.5
   opt@mpGridLonSpacingF = 30
   opt@mpGridLatSpacingF = 15
   ; opt@mpGridLineDashPattern = 1
   opt@mpGeophysicalLineColor = "#206e22"
+  ; opt@mpGeophysicalLineColor = "#78CFD5"
+  ; opt@mpGeophysicalLineThicknessF = 2
   opt@mpPerimOn         = False 
-  opt@gsnLeftString = genItem("A",itemType)
+  opt@gsnLeftString = genItem("b",itemType)
   opt@gsnCenterString = "~F22~NET-Heatwave~F21~"
   opt@tiYAxisString = "P1"
   opt@tiYAxisAngleF = 0
   opt@tiYAxisFontHeightF = 0.045
   opt@tiYAxisFont = 22
 plot(0) = plot_base(wks,ranges,opt)
-  opt@gsnLeftString = genItem("B",itemType)
+  opt@gsnLeftString = genItem("c",itemType)
   opt@tiYAxisString = ""
   opt@gsnCenterString = "~F22~SPEI~F21~"
 plot(1) = plot_base(wks,ranges,opt)
   opt@gsnCenterString = ""
   opt@tiYAxisString = "P2"
-  opt@gsnLeftString = genItem("D",itemType)
+  opt@gsnLeftString = genItem("e",itemType)
 plot(3) = plot_base(wks,ranges,opt)
   opt@tiYAxisString = ""
-  opt@gsnLeftString = genItem("E",itemType)
+  opt@gsnLeftString = genItem("f",itemType)
 plot(4) = plot_base(wks,ranges,opt)
   opt@tiYAxisString = ""
   ; opt@mpCenterLonF = 105
@@ -533,12 +607,13 @@ plot(4) = plot_base(wks,ranges,opt)
   ; opt@mpMinLonF = 20
   opt@mpCenterLonF = 95
 
-  opt@gsnLeftString = genItem("C",itemType)
+  opt@gsnLeftString = genItem("d",itemType)
   opt@gsnCenterString = "~F22~Rainfall~F21~"
+  ; opt@gsnCenterString = "~F22~OLR~F21~"
 plot(2) = plot_base(wks,ranges,opt)
   opt@tiYAxisString = ""
   opt@gsnCenterString = ""
-  opt@gsnLeftString = genItem("F",itemType)
+  opt@gsnLeftString = genItem("g",itemType)
 plot(5) = plot_base(wks,ranges,opt)
   opt@tiYAxisString = ""
   opt@gsnLeftString = genItem("I",itemType)+"  Clim Diff (P2 - P1)"
@@ -568,7 +643,7 @@ type@year = year
 
 ;# fig1A 热浪
 type := "net75p"
-  type@source = "ERA5"
+  type@source = "era5"
   type@month := (/7,8/)
   type@range := ranges
   type@level = 200
@@ -636,11 +711,15 @@ notDrawAndFrame(opt)
   ; opt@cnFillScales = (/0.5,0.5,0.5,0.5,0.5/)
   opt@cnLineThicknessF = 10
   opt@lbLabelBarOn = False
+  opt@sigLevel = sigLevel
+  ; opt@FDR = True
+  ; opt@FDRRange = FDRRange
   ; opt@cnfill
   ; opt@cnFillOpacityF = 0.1
 add_reg(plot(0),ts0,type,ranges,opt)
   opt@lbLabelBarOn = True
 add_reg(plot(3),ts2,type,ranges,opt)
+; exit()
   opt@lbLabelBarOn = True
   opt@test = True
   opt@Scale = 4.
@@ -648,7 +727,7 @@ add_reg(plot(3),ts2,type,ranges,opt)
 ; add_diff(plot(6),type,year01,year2,ranges,opt)
 
 ; add_reg(plot(5),ESWJ2,type,ranges,opt)
-
+; add_lineBox(plot(0),FDRRange)
 
 ;# fig.2e SPEI
 type := "spei"
@@ -700,6 +779,9 @@ opt := True
   opt@cnFillScaleF = 0.8
   opt@hatchingColor = "Grey90"
   opt@lbLabelBarOn = False
+  opt@sigLevel = sigLevel
+  ; opt@FDR = True
+  ; opt@FDRRange = FDRRange
 ; add_cor(plot(0),Jet1,type,ranges,opt)
 add_reg(plot(1),ts0,type,ranges,opt)
   opt@lbLabelBarOn = True
@@ -751,9 +833,11 @@ ts_CE2 := dim_standardize_Wrap(ts2({ispan(1999, 2021, 1)}), 0)
   opt@mode = "contour"
   ; opt@cnLineColors = (/"#229bff","#229bff","#229bff","#229bff","#F28D75","#EE6B54","#EA463B","#E82229"/)
   opt@cnLineColors := (/"Black","Black","Black","Black"/)
-
-add_reg(plot(0),ts_CE01,type,ranges,opt)
-add_reg(plot(3),ts_CE2,type,ranges,opt)
+  opt@sigLevel = sigLevel
+  ; opt@FDR = True
+  ; opt@FDRRange = FDRRange
+; add_reg(plot(0),ts_CE01,type,ranges,opt)
+; add_reg(plot(3),ts_CE2,type,ranges,opt)
 
 ; add_reg(plot(1),ts_CE01,type,ranges,opt)
 ; add_reg(plot(4),ts_CE2,type,ranges,opt)
@@ -792,10 +876,24 @@ notDrawAndFrame(opt)
   opt@lbBoxSeparatorLinesOn = False
   opt@lbLabelBarOn = False
   opt@mode = "hatching"
-
+  opt@sigLevel = sigLevel
+  opt@lbTitleString = "Rainfall (mm day~S~-1~N~)"
+  opt@lbTitleFontHeightF = 0.025
+  opt@lbTitlePosition = "Bottom"
+  opt@lbTitleDirection = "Across"
+  opt@lbLabelFontHeightF = 0.025
+  opt@lbLabelStride = 3
+  ; opt@lbTitleAngleF = 90
+  opt@lbTitleOffsetF = 0.1
+  opt@pmLabelBarWidthF = 0.5
+  opt@pmLabelBarHeightF = 0.1
+  opt@pmLabelBarOrthogonalPosF = 0.1
+  ; opt@FDR = True
+FDRRange = (/10,50,60,160/)
+  ; opt@FDRRange = FDRRange
 ; print(ranges)
 add_reg(plot(2),ts1,type,ranges,opt)
-  ; opt@lbLabelBarOn = True
+  opt@lbLabelBarOn = True
 add_reg(plot(5),ts2,type,ranges,opt)
   ; opt@lbLabelBarOn = True
 ; add_reg_diff(plot(8),ts1,ts2,type,ranges,opt)
@@ -820,8 +918,8 @@ add_reg(plot(5),ts2,type,ranges,opt)
 ;   opt@lbTitleDirection = "Across"
 ; add_reg_diff(plot(8),ts3,ts2,type,ranges,opt)
 
-type = "precip"
-  type@source = "NOAA_Land"
+type = "olr"
+  type@source = "olr"
   opt@lbOrientation = "Horizontal"
   opt@lbLabelBarOn = True
   opt@pmLabelBarWidthF = 0.5
@@ -836,10 +934,19 @@ type = "precip"
   opt@lbTitleOffsetF = 0.1
   opt@lbBoxSeparatorLinesOn = False
   opt@lbLabelBarOn = False
+  opt@sigLevel = sigLevel
+  ; opt@FDR = True
+  opt@Scale = 1
 
-add_reg(plot(2),ts0,type,ranges,opt)
+  ; opt@FDRRange = FDRRange
+; add_reg(plot(2),ts0({ispan(1979,1998,1)}),type,ranges,opt)
   opt@lbLabelBarOn = True
-add_reg(plot(5),ts2,type,ranges,opt)
+  opt@Scale = 1
+type = "olr"
+  type@source = "OLR"
+; add_reg(plot(5),ts2,type,ranges,opt)
+; add_lineBox(plot(2),FDRRange)
+; add_lineBox(plot(5),FDRRange)
   opt@lbLabelBarOn = True
   opt@pmLabelBarOrthogonalPosF = 0.1
   opt@cnFillOn = True
@@ -892,14 +999,47 @@ add_topo(plot(5),range,3000,res_topo)
 ; add_topo(plot(6),range,3000,res_topo)
 ; add_topo(plot(7),range,3000,res_topo)
 ; add_topo(plot(8),range,3000,res_topo)
+
 ;# 急流轴
-line := ""
+; line := ""
+;     line@txFontHeightF = 0.04
+;     line@txFont = 22
+;     line@txJust = "CenterLeft"
+;     line@txOffsetXF = 4
+;     line@txOffsetYF = -1
+;     ; line@txLineHeightF = 1.
+;     ; line@gsLineDashPattern = 1
+;     line@txJust = "BottomLeft"
+;     line@txOffsetYF = -25
+;     line@txOffsetXF = -145
+;     line@txOffsetXF = -145
+;     line@txOffsetYF = -10
+;     line@gsLineThicknessF = 10
+;     line@gsLineDashPattern = 0
+;     ; line@gsLineColor = "#eece00"
+;     line@gsLineColor = "#c872fe"
+;     ; line@gsLineColor = "Firebrick1"
+;     line@txJust = "BottomLeft"
+;     line@txFontColor = "#0000ff"
+;   lat_JA_new := lat_JA({23:123})
+;   ; lat_JA_new := lat_JA({20:150})
+;   add_line(plot(0),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(1),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(2),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(3),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(4),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(5),lat_JA_new&lon,lat_JA_new,line)
+  ; add_line(plot(6),lat_JA_new&lon,lat_JA_new,line)
+  ; add_line(plot(7),lat_JA_new&lon,lat_JA_new,line)
+  ; add_line(plot(8),lat_JA_new&lon,lat_JA_new,line)
+  line := ""
     line@txFontHeightF = 0.04
     line@txFont = 22
     line@txJust = "CenterLeft"
     line@txOffsetXF = 4
     line@txOffsetYF = -1
     ; line@txLineHeightF = 1.
+    line@gsLineThicknessF = 7
     ; line@gsLineDashPattern = 1
     line@txJust = "BottomLeft"
     line@txOffsetYF = -25
@@ -908,21 +1048,38 @@ line := ""
     line@txOffsetYF = -10
     line@gsLineThicknessF = 20
     line@gsLineDashPattern = 0
-    ; line@gsLineColor = "#eece00"
-    line@gsLineColor = "#c872fe"
+    line@gsLineColor = "#0082df"
     line@txJust = "BottomLeft"
-    line@txFontColor = "#0000ff"
-  lat_JA_new := lat_JA({23:123})
-  ; lat_JA_new := lat_JA({20:150})
-  add_line(plot(0),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(1),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(2),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(3),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(4),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(5),lat_JA_new&lon,lat_JA_new,line)
-  ; add_line(plot(6),lat_JA_new&lon,lat_JA_new,line)
-  ; add_line(plot(7),lat_JA_new&lon,lat_JA_new,line)
-  ; add_line(plot(8),lat_JA_new&lon,lat_JA_new,line)
+    line@txFontColor = "#0082df"
+  lat_JA_WAJ_P1 = lat_JA_P1({rangeWAJ(2):rangeWAJ(3)})
+  lat_JA_WAJ_P2 = lat_JA_P2({rangeWAJ(2):rangeWAJ(3)})
+  lat_JA_EAJ_P1 = lat_JA_P1({rangeEAJ(2):rangeEAJ(3)})
+  lat_JA_EAJ_P2 = lat_JA_P2({rangeEAJ(2):rangeEAJ(3)})
+  lat_JA_Center_P1 = lat_JA_P1({rangeWAJ(3):rangeEAJ(2)})
+  lat_JA_Center_P2 = lat_JA_P2({rangeWAJ(3):rangeEAJ(2)})
+  add_line(plot(0),lat_JA_WAJ_P1&lon,lat_JA_WAJ_P1,line)
+  add_line(plot(1),lat_JA_WAJ_P1&lon,lat_JA_WAJ_P1,line)
+  add_line(plot(2),lat_JA_WAJ_P1&lon,lat_JA_WAJ_P1,line)
+  add_line(plot(3),lat_JA_WAJ_P2&lon,lat_JA_WAJ_P2,line)
+  add_line(plot(4),lat_JA_WAJ_P2&lon,lat_JA_WAJ_P2,line)
+  add_line(plot(5),lat_JA_WAJ_P2&lon,lat_JA_WAJ_P2,line)
+    line@gsLineColor = "red"
+    line@txFontColor = "red"
+  add_line(plot(0),lat_JA_EAJ_P1&lon,lat_JA_EAJ_P1,line)
+  add_line(plot(1),lat_JA_EAJ_P1&lon,lat_JA_EAJ_P1,line)
+  add_line(plot(2),lat_JA_EAJ_P1&lon,lat_JA_EAJ_P1,line)
+  add_line(plot(3),lat_JA_EAJ_P2&lon,lat_JA_EAJ_P2,line)
+  add_line(plot(4),lat_JA_EAJ_P2&lon,lat_JA_EAJ_P2,line)
+  add_line(plot(5),lat_JA_EAJ_P2&lon,lat_JA_EAJ_P2,line)
+    line@gsLineColor = "#e8e8e8"
+    line@gsLineThicknessF = 20
+    line@txFontColor = "white"
+  ; add_line(plot(0),lat_JA_Center_P1&lon,lat_JA_Center_P1,line)
+  ; add_line(plot(1),lat_JA_Center_P1&lon,lat_JA_Center_P1,line)
+  ; add_line(plot(2),lat_JA_Center_P1&lon,lat_JA_Center_P1,line)
+  ; add_line(plot(3),lat_JA_Center_P2&lon,lat_JA_Center_P2,line)
+  ; add_line(plot(4),lat_JA_Center_P2&lon,lat_JA_Center_P2,line)
+  ; add_line(plot(5),lat_JA_Center_P2&lon,lat_JA_Center_P2,line)
 ;# 组图
 resp := True
   resp@gsnFrame = False
@@ -931,16 +1088,97 @@ resp := True
   resp@gsnPanelXWhiteSpacePercent = 5.
   ; resp@gsnPanelRowSpec = True
   resp@gsnPanelXF = (/0.04,0.38,0.71,0.04,0.38,0.71,0.03,0.37,0.71/)
-  resp@gsnPanelYF = (/0.9,0.9,0.9,0.65,0.65,0.65,0.33,0.33,0.33/)
+  resp@gsnPanelYF = (/0.9,0.9,0.9,0.65,0.65,0.65,0.33,0.33,0.33/)-0.28
   ; resp@gsnPanelScaleF = (/0.3,0.3,0.3,0.3/)
   resp@gsnMaximize = False
+  resp@gsnPaperOrientation = "portrait"
   ; resp@gsnPanelLeft = -0.1
   ; resp@gsnPanelDebug = True
   ; resp@gsnPanelGridYF = 0.4
 gsn_panel(wks,plot,(/3,3/),resp)
 
-
+;# projected UDZC jet index
+res := True
+notDrawAndFrame(res)
+  res@gsnLeftString = genItem("a",itemType)+"  1. Projected ESWJ index,"
+  res@gsnLeftStringFontHeightF = 0.015
+  res@gsnLeftStringOrthogonalPosF = 0.01
+  res@gsnLeftStringParallelPosF = -0.02
+  res@gsnCenterString = "2. WJA index,"
+  res@gsnCenterStringFontColor = "DodgerBlue"
+  res@gsnCenterStringFontHeightF = 0.015
+  res@gsnCenterStringParallelPosF = 0.55
+  res@gsnCenterStringOrthogonalPosF = 0.02
+  res@gsnRightString = "3. EJA index"
+  res@gsnRightStringFontColor = "firebrick1"
+  res@gsnRightStringFontHeightF = 0.015
+  res@gsnRightStringOrthogonalPosF = 0.03
+  res@gsnRightStringParallelPosF = 0.8
+  res@tmYLLabelFontHeightF = 0.014
+  res@tmYLMajorOutwardLengthF = 0.005
+  res@tmYLMajorLengthF = 0.005
+  res@tmYLLabelDeltaF = -0.8
+  res@tmXBMajorLengthF = 0.005
+  res@tmXBMajorOutwardLengthF = 0.005
+  res@tmXBTickSpacingF = 10
+  res@tmXBTickStartF = 1960
+  res@tmXBLabelFontHeightF = 0.014
+  res@xyLineColor = "transparent"
+  res@vpHeightF = 0.18
+  ; res@gsnXYBarChartColors = "#b0b0b0"
+  res@gsnXYBarChartColors = "Black"
+  res@minmax = (/-3.3,3.6/)
+  res@tmYLValues = (/-3,-1.5,0,1.5,3/)
+plot := plot_ts(wks,EWJA,res)
+  res@xyLineColor = "DodgerBlue"
+  res@xyMarkLineMode = "MarkLines"
+  res@xyMarkerSizeF = 0.008
+  res@xyLineThicknessF = 3
+  WAJ_index = dim_standardize_Wrap(WAJ_index, 0)
+add_ts(plot,WAJ_index,res)
+  res@xyLineColor = "transparent"
+  res@xyMarkerSizeF = 0.006
+  res@xyMarkerColors = "White"
+add_ts(plot,WAJ_index,res)
+  res@xyLineThicknessF = 5
+  res@xyMarkLineMode = "Lines"
+  res@xyLineColor = "firebrick1"
+  EAJ_index = dim_standardize_Wrap(EAJ_index, 0)
+add_ts(plot,EAJ_index,res)
+R12_P1 = escorc(WAJ_index({year01}), EWJA({year01}))
+R13_P1 = escorc(EAJ_index({year01}), EWJA({year01}))
+R12_P2 = escorc(WAJ_index({year2}), EWJA({year2}))
+R13_P2 = escorc(EAJ_index({year2}), EWJA({year2}))
+df = dimsizes(year01)-2
+text = "P1:  R~B~1,2~N~ = "+sprintf("%0.2f", R12_P1)+", ~F21~"+r2pStringDev(R12_P1,df)
+  text@txFontHeightF = 0.014
+  text@txFontColor = "DodgerBlue"
+  text@txJust = "CenterLeft"
+add_text(plot,text,1970.25,2.9)
+text = "P1:  R~B~1,3~N~ = "+sprintf("%0.2f", R13_P1)+", ~F21~"+r2pStringDev(R13_P1,df)
+  text@txFontColor = "Firebrick1"
+add_text(plot,text,1970.25,-2.7)
+df = dimsizes(year2)-2
+text = "P2:  R~B~1,2~N~ = "+sprintf("%0.2f", R12_P2)+", ~F21~"+r2pStringDev(R12_P2,df)
+  text@txFontColor = "DodgerBlue"
+add_text(plot,text,2000.3,2.9)
+text = "P2:  R~B~1,3~N~ = "+sprintf("%0.2f", R13_P2)+", ~F21~"+r2pStringDev(R13_P2,df)
+  text@txFontColor = "Firebrick1"
+add_text(plot,text,2000.3,-2.7)
+;# 阴影
+pgres := (/-10,10,min(year2)-0.5,2025/)
+  pgres@gsFillOpacityF = 0.1
+  pgres@gsFillColor = "#ff8747"
+add_fillBox(plot,pgres)
+resp := True
+  resp@gsnFrame = False
+  resp@gsnMaximize = False
+  resp@gsnPanelXF = 0.066
+  resp@gsnPanelYF = 0.95
+  resp@gsnPaperOrientation = "portrait"
+gsn_panel(wks,plot,(/1,1/),resp)
 frame(wks)
-; delete(wks)
+delete(wks)
+system("gs -q -sDEVICE=png16m -sBATCH -sOutputFile="+fileName+".png -dNOPAUSE -r200 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "+fileName+".pdf")
 show(fileName+".png")
 end

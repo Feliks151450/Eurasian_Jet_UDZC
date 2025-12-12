@@ -244,19 +244,20 @@ begin
   setBufferPath(localpath(3)+".buffer/")
   bufferMode = "disabled"
   ; bufferMode = "smart"
-  fig = "pdf"
-    fig@wkPaperWidthF = 25
-    fig@wkPaperHeightF = 25
+  pdf = "pdf"
+    pdf@wkPaperWidthF = 25
+    pdf@wkPaperHeightF = 25
   png = "png"
     png@wkHeight = 2000
     png@wkWidth = 2000
 ;# fileName
+sigLevel = 95
 itemType = "Nature"
 fileName = "NC_fig5"
 fig2png = "png"
   fig2png@wkHeight = 4096
   fig2png@wkWidth = 4096
-wks := gsn_open_wks(fig,fileName)
+wks := gsn_open_wks(pdf,fileName)
   year := ispan(1958, 2022, 1)
   year0 := ispan(1958, 1978, 1)
   year1 := ispan(1979, 1998, 1)
@@ -366,25 +367,23 @@ size := 3
   size@mpLandFillColor = "White"
   size@mpGeophysicalLineThicknessF = 0.2
 ; range = (/10,85,-30,180/)
-range = (/25,85,-100,40/)
+range = (/25,100,-100,40/)
 plot := plot_bases(wks,range,size)
 
-;# fig.5B 底图
+;# fig.5C 底图
 ; ts0 := ESWJ0
-ranges := (/0,70,180,350/)
+ranges := (/0,75,180,350/)
 opt := True
 notDrawAndFrame(opt)
   opt@vpHeightF = 0.57
-  opt@vpWidthF = 0.53
+  opt@vpWidthF = 0.55
   opt@tmYLLabelsOn = True
   ; opt@gsnLeftString = (/"EOF1 "+min(year0)+"-"+max(year0),min(year1)+"-"+max(year1),min(year2)+"-"+max(year2)/)
-  opt@gsnLeftStringParallelPosF = 0
-  opt@gsnLeftString = "NET-Heatwave & SPEI~C~ "+genItem("B",itemType)
-  opt@gsnLeftStringFontHeightF = 0.034
-  opt@gsnLeftStringOrthogonalPosF = -0.08
+  opt@gsnLeftString = genItem("C",itemType)
+  opt@gsnLeftStringFontHeightF = 0.036
+  opt@gsnLeftStringParallelPosF = 0.05
+  opt@gsnLeftStringOrthogonalPosF = -0.1
 
-  opt@gsnCenterStringFontHeightF = 0.045
-  opt@gsnCenterStringOrthogonalPosF = 0.17
   opt@mpProjection      = "Satellite"
   opt@mpCenterLatF      = 35.
   opt@mpLandFillColor = "transparent"
@@ -394,62 +393,72 @@ notDrawAndFrame(opt)
   opt@mpMinLatF = 10
   opt@mpMaxLonF = 290
   opt@mpMinLonF = 225
-  opt@mpGridAndLimbOn = True
+  opt@mpGridAndLimbOn = False
   opt@mpGridLineThicknessF = 0.5
   opt@mpGridLineColor = "DimGray"
   opt@mpGridLonSpacingF = 30
   opt@mpGridLatSpacingF = 15
   ; opt@mpGridLineDashPattern = 1
-  opt@mpGeophysicalLineColor = "#206e22"
+  ; opt@mpGeophysicalLineColor = "#206e22"
+  opt@mpGeophysicalLineColor = "Black"
   opt@mpGeophysicalLineThicknessF = 0.3
-  opt@mpPerimOn         = True 
+  opt@mpPerimOn         = True
   opt@mpPerimDrawOrder = "PostDraw"
   ; opt@mpPerimLineThicknessF = 5
   opt@mpOceanFillColor = "White"
   opt@mpFillDrawOrder = "PostDraw"
 
-plot(1) = plot_base(wks,ranges,opt)
+plot(2) = plot_base(wks,ranges,opt)
 
-;# fig.5C 底图
+;# fig.5B 底图
 opt := True
 notDrawAndFrame(opt)
-  opt@gsnLeftString = "Northeastern Atlantic SST~C~ "+genItem("C",itemType)
-  opt@gsnLeftStringFontHeightF = 0.034
-  opt@gsnLeftStringParallelPosF = 0
-  opt@gsnLeftStringOrthogonalPosF = -0.08
+  opt@gsnLeftString = genItem("B",itemType)
+  opt@gsnLeftStringFontHeightF = 0.036
+  opt@gsnLeftStringParallelPosF = 0.05
+  opt@gsnLeftStringOrthogonalPosF = -0.1
+
+  opt@gsnCenterStringFontHeightF = 0.036
+  opt@gsnCenterStringOrthogonalPosF = 0.04
+  opt@gsnCenterString = "NET-Heatwave & SPEI"
+  
   opt@mpProjection      = "Satellite"
-  opt@mpCenterLatF      = 50.
+  opt@mpCenterLatF      = 40.
   ; opt@mpLandFillColor = "transparent"
   opt@mpCenterLonF = 0
   opt@mpLimitMode = "LatLon"
-  opt@mpMaxLatF = 82
-  opt@mpMinLatF = 34
-  opt@mpMaxLonF = -15
-  opt@mpMinLonF = 20
-  opt@vpHeightF = 0.57
-  opt@vpWidthF = 0.53
+  opt@mpMaxLatF = 75
+  opt@mpMinLatF = 30
+  opt@mpMaxLonF = 36
+  opt@mpMinLonF = -13
+  opt@vpHeightF = 0.55
+  opt@vpWidthF = 0.55
   opt@tmXBLabelFontHeightF = 0.02
   opt@tmYLLabelFontHeightF = 0.02
   opt@tmXBMajorLengthF = 0.01
   opt@tmXBMajorOutwardLengthF = 0.01
   opt@tmXBLabelDeltaF = -0.7
   ; opt@tmBorderThicknessF = 10  
-  opt@mpGridAndLimbOn = True
+  opt@mpGridAndLimbOn = False
   opt@mpGridLineThicknessF = 0.5
   opt@mpGridLineColor = "DimGray"
   opt@mpGeophysicalLineThicknessF = 0.3
   opt@mpGridLonSpacingF = 30
   opt@mpGridLatSpacingF = 15
+  opt@mpFillDrawOrder = "PreDraw"
   opt@mpPerimOn         = True 
   opt@mpPerimDrawOrder = "PostDraw"
+  opt@mpOceanFillColor = "White"
+  opt@mpLandFillColor = "transparent"
+  opt@mpFillDrawOrder = "PostDraw"
 
   ; opt@tmXBBorderOn = True
-plot(2) = plot_base(wks,(/32,83,-25,32/),opt)
+plot(1) = plot_base(wks,(/32,83,-25,32/),opt)
 ;# Fig5A H300
 type = "h"
   type@source = "ERA5"
   type@range := (/25,85,0,360/)
-  type@level = 300
+  type@level = 200
   type@month = (/7,8/)
 opt := True
 notDrawAndFrame(opt)
@@ -473,6 +482,7 @@ notDrawAndFrame(opt)
   opt@hatchingRepeat = 50
   opt@gsnAddCyclic = True
   opt@cnFillScaleF = 1.2
+  opt@sigLevel = sigLevel
   ; opt@cnLinesOn = True
   ; opt@cnLineColor = "White"
   ; opt@cnLineThicknessF = 5
@@ -523,7 +533,7 @@ add_waf_dev(plot(0),ts1,type,range,opt)
 res_topo := True
   res_topo@mode = "contour"
   res_topo@cnLineColor = "#575757"
-  res_topo@cnLineThicknessF = 3.
+  res_topo@cnLineThicknessF = 5.
   res_topo@cnFillOpacityF = 0.7
   res_topo@cnFillColor = "#575757"
 add_topo(plot(0),(/10,50,40,120/),3000,res_topo)
@@ -532,7 +542,35 @@ res_line := True
   res_line@gsLineThicknessF = 2
 add_line(plot(0),(/0,180,360/),(/85,85,85/),res_line)
 add_line(plot(0),(/0,180,360/),(/25,25,25/),res_line)
-;# fig5B 热浪
+
+; ;# a加框
+; box := (/40,60,-40,-10/)
+;   box@gsLineColor = "#00ff00"
+;   box@gsLineThicknessF = 10
+; add_lineBox(plot(0),box)
+; box = (/40,60,0,35/)
+; add_lineBox(plot(0),box)
+; box = (/35,60,40,60/)
+; add_lineBox(plot(0),box)
+; box = (/35,60,65,85/)
+; add_lineBox(plot(0),box)
+; box = (/30,50,90,110/)
+; add_lineBox(plot(0),box)
+; box = (/25,45,115,135/)
+; add_lineBox(plot(0),box)
+; box = (/35,55,140,175/)
+; add_lineBox(plot(0),box)
+; box = (/35,55,180,210/)
+; add_lineBox(plot(0),box)
+; box = (/35,55,215,240/)
+; add_lineBox(plot(0),box)
+; box = (/30,55,245,265/)
+; add_lineBox(plot(0),box)
+; box = (/30,50,270,291/)
+; add_lineBox(plot(0),box)
+; box = (/30,50,296,316/)
+; add_lineBox(plot(0),box)
+;# fig.5B 热浪
 type := "net75p"
   type@source = "ERA5"
   type@month := (/7,8/)
@@ -563,13 +601,12 @@ notDrawAndFrame(opt)
   ; opt@lbLabelFormat = "%0.0f"
   ; opt@gsnMaximize = True
   opt@cnFillScaleF = 1.
-  opt@lbLabelBarOn = True
   opt@lbLabelFormat = "%0.0f"
   opt@lbLabelFontHeightF = 0.035
   opt@lbBoxSeparatorLinesOn = False
   opt@pmLabelBarHeightF = 0.6
   opt@pmLabelBarWidthF = 0.065
-  opt@pmLabelBarOrthogonalPosF = 0.06
+  opt@pmLabelBarOrthogonalPosF = 0.055
   opt@pmLabelBarParallelPosF = 0.49
   opt@lbTitleString = "Heatwave (days month~S~-1~N~)"
   opt@lbTitleAngleF = -90
@@ -578,6 +615,14 @@ notDrawAndFrame(opt)
   opt@lbTitleDirection = "Across"
   opt@lbTitleFontHeightF = 0.035
   opt@lbOrientation = "Vertical"
+  ;横向
+  opt@lbTitleString = "NET-Heatwave (days month~S~-1~N~)"
+  opt@lbTitlePosition = "Bottom"
+  opt@lbTitleOffsetF = 0.2
+  opt@lbTitleAngleF = 0
+  opt@lbOrientation = "Horizontal"
+  opt@pmLabelBarHeightF = 0.115
+  opt@pmLabelBarWidthF = 0.6
   opt@smoothing = True
   ; opt@cnFillColors := (/"#0E2245","#223868","#105797","#1B71B6","#2392C9","#28A0CE","#4EC0D9","#98D6E3","#FFFFFF","#F6B8AA","#F28D75","#EE6B54","#EA463B","#E82229","#BE252B","#871E20","#6B1014"/)
   ; opt@cnLevels := (/-6,-5,-4,-3,-2.5,-2,-1.5,-1,1,1.5,2,2.5,3,4,5,6/)
@@ -603,9 +648,12 @@ notDrawAndFrame(opt)
   ; opt@cnFillScales = (/0.5,0.5,0.5,0.5,0.5/)
   opt@cnLineThicknessF = 10
   opt@lbLabelBarOn = True
+  opt@sigLevel = sigLevel
   ; opt@cnfill
   ; opt@cnFillOpacityF = 0.1
-add_reg(plot(1),ts1,type,ranges,opt)
+add_reg(plot(2),ts1,type,ranges,opt)
+
+
 
 
 ts2 = dim_standardize_Wrap(ESWJ({ispan(1999, 2021, 1)}), 0)
@@ -671,7 +719,10 @@ opt := True
 ; add_cor(plot(0),Jet1,type,ranges,opt)
   type@range(0) = 25
   type@range(3) = 300
-add_reg(plot(1),ts2,type,ranges,opt)
+  opt@sigLevel = sigLevel
+; add_reg(plot(2),ts1,type,ranges,opt)
+
+add_reg(plot(2),ts2,type,ranges,opt)
 
 
 ;# 复合事件
@@ -694,56 +745,211 @@ type = "CE"
 
 ; add_reg(plot(1),ts_CE2,type,ranges,opt)
 
-;# fig5C
-type := "sst"
+;# fig5B 西欧热浪
+  range = (/0,90,-100,200/)
+  type@range = range
+; type := "sst"
+;   type@source = "ERA5"
+;   type@month := (/2/)
+;   type@level = 700
+; opt := True
+; notDrawAndFrame(opt)
+;   opt@smoothing = True
+;   opt@Scale = 0.05
+;   opt@lbLabelFormat = "%0.2f"
+;   opt@lbTitleString = "Correlation"
+;   opt@lbTitleFontHeightF = 0.035
+;   opt@lbLabelFontHeightF = 0.034
+;   opt@lbLabelAngleF = -80
+;   opt@lbTitleOffsetF = 0.4
+;   opt@lbLabelStride = 1
+;   opt@gsnLeftStringOrthogonalPosF = 0.03
+;   opt@pmLabelBarWidthF = 0.065
+;   opt@pmLabelBarHeightF = 0.6
+;   opt@pmLabelBarOrthogonalPosF = 0.06
+;   opt@lbOrientation = "Vertical"
+;   opt@lbTitlePosition = "Right"
+;   opt@lbTitleDirection = "Across"
+;   opt@lbTitleAngleF = -90
+;   opt@lbBoxSeparatorLinesOn = False
+;   opt@lbLabelBarOn = True
+;   opt@gsnAddCyclic = True
+;   opt@cnFillDrawOrder = "PreDraw"
+;   opt@test = False
+;   t = t_value(dimsizes(year2)-2)
+;   opt@cnFillColors := (/"#C1E0B8","#FFFFFF","#F6E9BC","#F0BF2A","#A57E1E"/)
+;   opt@cnLevels := (/-t@r90,t@r90,0.45,0.55/)
+
+; ; add_reg(plot(0),ts1,type,range,opt)
+; ; add_cor(plot(0),ts1,type,range,opt)
+;   type@month := (/7,8/)
+; add_cor(plot(2),ts1,type,range,opt)
+;   opt@cnLevels := (/-4,-3,-2,-1,1,2,3,4/)
+;   opt@cnFillOn = False
+;   opt@cnLinesOn = True
+;   opt@Scale = 0.2
+; ; add_reg(plot(2),ts1,type,range,opt)
+;   ; type@month := (/5,6/)
+; ; add_reg(plot(2),ts1,type,range,opt)
+; ; add_cor(plot(2),ts1,type,range,opt)
+; ; add_cor(plot(2),ts1,type,range,opt)
+
+; ; type = "lwa"
+; ; add_cor(plot(2),ts1,type,range,opt)
+
+
+ranges := (/36,72,-10,100/)
+type := "net75p"
   type@source = "ERA5"
-  type@month := (/2/)
-  type@level = 700
+  type@month := (/7,8/)
+  type@range := ranges
+  type@level = 200
+  type@year = year1
 opt := True
 notDrawAndFrame(opt)
-  opt@smoothing = True
-  opt@Scale = 0.05
-  opt@lbLabelFormat = "%0.2f"
-  opt@lbTitleString = "Correlation"
-  opt@lbTitleFontHeightF = 0.035
-  opt@lbLabelFontHeightF = 0.034
-  opt@lbLabelAngleF = -80
-  opt@lbTitleOffsetF = 0.4
-  opt@lbLabelStride = 1
-  opt@gsnLeftStringOrthogonalPosF = 0.03
-  opt@pmLabelBarWidthF = 0.065
-  opt@pmLabelBarHeightF = 0.6
+  opt@Scale = 1.
+  opt@multi = 1.0
+  opt@detrend = False
+  opt@cnLineThicknessF = 2
+  opt@gsnContourNegLineDashPattern = 2
+  opt@vector = False
+  opt@dots = False
+  opt@xReverseColors = True  
+  ; opt@tmYLLabelStride = 1
+  opt@tmXBLabelStride = 1
+  opt@tmXBLabelFontHeightF = 0.025
+  opt@tmYLLabelsOn = True
+  opt@tmYLLabelFontHeightF = 0.025
+  opt@tmXBTickSpacingF = 40
+  opt@tmYLTickSpacingF = 25
+  opt@lbLabelBarOn = False
+  ; opt@cnFillColors = (/"#0E2245","#223868","#105797","#1B71B6","#2392C9","#28A0CE","#4EC0D9","#98D6E3","#FFFFFF","#F6B8AA","#F28D75","#EE6B54","#EA463B","#E82229","#BE252B","#871E20","#6B1014"/)
+  ; opt@cnLevels = (/-1.0,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0/)
+  ; opt@lbLabelFormat = "%0.0f"
+  ; opt@gsnMaximize = True
+  opt@cnFillScaleF = 1.
+  opt@lbLabelBarOn = True
+  opt@lbLabelFormat = "%0.0f"
+  opt@lbLabelFontHeightF = 0.032
+  opt@lbBoxSeparatorLinesOn = False
+  opt@lbTitleFontHeightF = 0.032
+  ;竖向
+  opt@lbTitleString = "Heatwave (days month~S~-1~N~)"
   opt@pmLabelBarOrthogonalPosF = 0.06
-  opt@lbOrientation = "Vertical"
+  opt@pmLabelBarParallelPosF = 0.49
+  opt@pmLabelBarHeightF = 0.6
+  opt@pmLabelBarWidthF = 0.065
+  opt@lbTitleAngleF = -90
+  opt@lbTitleOffsetF = 0.4
   opt@lbTitlePosition = "Right"
   opt@lbTitleDirection = "Across"
-  opt@lbTitleAngleF = -90
-  opt@lbBoxSeparatorLinesOn = False
-  opt@lbLabelBarOn = True
-  opt@gsnAddCyclic = True
-  opt@cnFillDrawOrder = "PreDraw"
-  opt@test = False
-  t = t_value(dimsizes(year2)-2)
-  opt@cnFillColors := (/"#C1E0B8","#FFFFFF","#F6E9BC","#F0BF2A","#A57E1E"/)
-  opt@cnLevels := (/-t@r90,t@r90,0.45,0.55/)
-  type@range = (/0,90,0,360/)
-  range(0) = 0
-; add_reg(plot(0),ts1,type,range,opt)
-; add_cor(plot(0),ts1,type,range,opt)
+  opt@lbOrientation = "Vertical"
+  ;横向
+  opt@lbTitleString = "NET-Heatwave (days month~S~-1~N~)"
+  opt@lbTitlePosition = "Bottom"
+  opt@lbTitleOffsetF = 0.2
+  opt@lbTitleAngleF = 0
+  opt@lbOrientation = "Horizontal"
+  opt@pmLabelBarHeightF = 0.1
+  opt@pmLabelBarWidthF = 0.6
+  opt@smoothing = True
+  ; opt@cnFillColors := (/"#0E2245","#223868","#105797","#1B71B6","#2392C9","#28A0CE","#4EC0D9","#98D6E3","#FFFFFF","#F6B8AA","#F28D75","#EE6B54","#EA463B","#E82229","#BE252B","#871E20","#6B1014"/)
+  ; opt@cnLevels := (/-6,-5,-4,-3,-2.5,-2,-1.5,-1,1,1.5,2,2.5,3,4,5,6/)
+  ; opt@cnFillColors = (/"#407933","#72BF4F","#9BCE7F","#C1E0B8","#FFFFFF","#F6E9BC","#F1CD5C","#f17c22","#ff0000","#b02418"/)
+  ; ; opt@cnFillColors := (/"#0E2245","#223868","#105797","#1B71B6","#2392C9","#28A0CE","#4EC0D9","#98D6E3","#FFFFFF","#F6B8AA","#F28D75","#EE6B54","#EA463B","#E82229","#BE252B","#871E20","#6B1014"/)
+  ; opt@cnLevels := (/-7,-5,-3,-1,1,3,5,7,9/)
+  opt@cnFillColors = (/"#2d8134","#3AA142","#68B75D","#9BCB94","#CCE6C7","#FFFFFF","#FFFFFF","#FEF5C7","#FEC554","#FEA52C","#F4602A","#C42A1D"/)
+  ; opt@cnLevels = (/-3,-2,-1.5,-1,-0.5,0.5,1,1.5,2,3/)*2
+  ; opt@cnLevels = (/-2.5,-2,-1.5,-1,-0.5,0.5,1,1.5,2,2.5/)*2
+  opt@cnLevels = (/-2.5,-2,-1.5,-1,-0.5,0,0.5,1,1.5,2,2.5/)*2
+  ; opt@cnLevels = (/-3,-2.5,-2,-1.5,-1,1,1.5,2,2.5,3/)*2
+  opt@lbLabelStride = 2
+    opt@cnFillDotSizeF = 0.0035
+  opt@stipplingColor = "white"
+  ; opt@cnFillPattern
+  opt@mode = "stippling"
+  opt@hatchingPattern = 6
+  opt@hatchingColor = "Grey90"
+  ; opt@hatchingColor = "#dadada"
+  ; opt@hatchingColor = "white"
+  opt@hatchingRepeat = 50
+  opt@cnFillScaleF = 0.8
+  ; opt@cnFillScales = (/0.5,0.5,0.5,0.5,0.5/)
+  opt@cnLineThicknessF = 10
+  opt@lbLabelBarOn = False
+  opt@sigLevel = sigLevel
+  ; opt@cnfill
+  ; opt@cnFillOpacityF = 0.1
+; print(ranges)
+; exit()
+add_reg(plot(1),ts1,type,ranges,opt)
+
+
+
+
+ts2 = dim_standardize_Wrap(ESWJ({ispan(1999, 2021, 1)}), 0)
+;# fig.5B SPEI
+type := "spei"
+  type@source = "spei"
   type@month := (/7,8/)
-add_cor(plot(2),ts1,type,range,opt)
-  opt@cnLevels := (/-4,-3,-2,-1,1,2,3,4/)
+  type@range := ranges
+  type@level = 500
+opt := True
+  ; opt@multi = 2.0
+  opt@gsnDraw = False
+  opt@gsnFrame = False
+  opt@detrend = False
+  opt@cnLineThicknessF = 2
+  opt@vector = False
+  opt@dots = False
+  ; opt@reverseColors = True
+  ; opt@tmYLLabelStride = 1
+  ; opt@vpHeightF = 0.45
+  ; opt@vpWidthF = 0.9
+  opt@lbLabelBarOn = False
+  opt@cnFillColors = (/"#2d8134","#3AA142","#68B75D","#9BCB94","#CCE6C7","#FFFFFF","#FEF5C7","#FEC554","#FEA52C","#F4602A","#C42A1D"/)
+  opt@cnLineColors = (/"#2d8134","#3AA142","#68B75D","#9BCB94","#CCE6C7","#FEF5C7","#FEC554","#FEA52C","#F4602A","#C42A1D"/)
+  opt@cnLineColors = (/"Black","Black","Black","Black","Black","Black","Black","Black","Black","Black"/)
+  positiveColor = "#6a2100"
+  opt@cnLineColors = (/"#2d8134","#2d8134","#2d8134","#2d8134","#2d8134",positiveColor,positiveColor,positiveColor,positiveColor,positiveColor/)
+  opt@cnMonoLineColor = True
+  ; opt@gsnContourNegLineDashPattern = 12
+  opt@cnLineColor = "Black"
+  opt@cnLevels = (/-3,-2.5,-1.9,-1.3,-0.7,0.7,1.3,1.9,2.5,3/)*2
+  ; opt@cnLevels = (/-1.0,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0/)
+  opt@lbLabelFormat = "%0.2f"
+  opt@gsnMaximize = True
+  opt@cnFillDotSizeF = 0.003
+  opt@cnFillScaleF = 1.0
+  opt@stipplingColor = "white"
+  opt@smoothing = True
+  ; opt@multi = 1000
+  ; opt@Scale = 0.15
+  opt@Scale = 0.1
+  ; opt@relative = False
+  opt@pmLabelBarWidthF = 0.5
+  opt@pmLabelBarHeightF = 0.1
+  opt@pmLabelBarOrthogonalPosF = 0.1
+  opt@lbTitleString = "SPEI"
+  opt@lbTitlePosition = "Bottom"
+  opt@lbTitleOffsetF = 0.2
+  opt@lbTitleFontHeightF = 0.025
+  opt@lbLabelFontHeightF = 0.025
+  opt@lbLabelStride = 3
+  opt@lbBoxSeparatorLinesOn = False
+  opt@reverseColors = True
+  opt@test = True
   opt@cnFillOn = False
   opt@cnLinesOn = True
-  opt@Scale = 0.2
-; add_reg(plot(2),ts1,type,range,opt)
-  ; type@month := (/5,6/)
-; add_reg(plot(2),ts1,type,range,opt)
-; add_cor(plot(2),ts1,type,range,opt)
-; add_cor(plot(2),ts1,type,range,opt)
-
-; type = "lwa"
-; add_cor(plot(2),ts1,type,range,opt)
+  opt@cnLineThicknessF = 4
+  opt@cnLineColor = "DimGray"
+  opt@mode = "hatching"
+  opt@hatchingPattern = 6
+  opt@hatchingRepeat = 50
+  opt@hatchingColor = "#000000"
+  opt@sigLevel = sigLevel
+; add_cor(plot(0),Jet1,type,ranges,opt)
+add_reg(plot(1),ts1,type,ranges,opt)
 
 rlable := True
   rlable@lat_spacing = 5
@@ -784,7 +990,7 @@ line := ""
   ; add_line(plot(2),lat_JA_new&lon,lat_JA_new,line)
   ; add_line(plot(6),lat_JA_new&lon,lat_JA_new,line)
   ; add_line(plot(7),lat_JA_new&lon,lat_JA_new,line)
-
+;# 组图
 resp = True
   resp@gsnPanelLabelBar = False
   resp@lbOrientation = "Vertical"
@@ -802,7 +1008,7 @@ resp = True
   resp@gsnPanelScaleF = (/0.7,0.52,0.52/)
   ; resp@gsnPanelYF = (/0.95,0.9/)
   ; resp@gsnPanelXF = (/0.04,0.6/)
-  resp@gsnPanelYF = (/0.96,0.969,0.6/)
+  resp@gsnPanelYF = (/0.96,0.96,0.645/)
   resp@gsnPanelXF = (/0.02,0.64,0.64/)
   resp@gsnMaximize = True
   ; resp@wkOrientation = "landscape"

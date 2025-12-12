@@ -1,355 +1,9 @@
-begin ;记录全局参数
-  ; start_time = get_cpu_time()
-  pwd = systemfunc("pwd")
-  localpath := (/"/SSD1/","/SSD1/","/SSD1/","/home/llf/code/ncl/"/)
-  call_stream = NewList("fifo")
-  bufferPath = localpath(1)+"buffer/"
-  bufferMode = "disabled"
-  bufferIdList = NewList("fifo")
-  bufferFileList = NewList("fifo")
-  bufferCount = 0
-  clr = (/"red","#6CB650","#9BCE7F","#C1E0B8","#FFFFFF","#F6E9BC","#F1CD5C","#F0BF2A","#A57E1E"/)
-  script = get_script_prefix_name()
-  except = (/"_FillValue","mode","time","tval","nptxy","rstd","yintercept","forecast_time","initial_time","average_op_ncl","sub_center","level_indicator","gds_grid_type","parameter_table_version","parameter_number","forecast_time_units","statistical_process_descriptor","statistical_process_duration"/)
-  res_plot = (/"am","cn","gs","gsn","lb","lg","mp","pm","pr","sf","tf","ti","tm","tr","tx","vc","vf","vp","wk","ws","xy","Scale"/)
-  global = (/-90,90,0,360/)
-  NH = (/0,90,0,360/)
-  NH_ex = (/20,90,0,360/)
-  SH = (/-90,0,0,360/)
-  levels       := (/1000,975,950,925,900,875,850,825,800,775,750,700,650,600,550,500,450,400,350,300,250,225,200,175,150,125,100/)
-end
-
-load "sub_toolbox.ncl"
-load "sub_read.ncl"
-load "sub_calc.ncl"
-load "sub_plot.ncl"
-load "fixBarColor.ncl"
-
-undef("readCor")
-function readCor(path)
-local f,cor
+load "indices.ncl"
 begin
-  f := addfile(path, "r")
-  cor = f->cor
-  return cor
-end
 
-;函数定义
-undef("getJetAxisStrength")
-function getJetAxisStrength(U)
-local lat, ind_lon,jet_lat,jet_strength,jet_strength_lon
-begin
-  lat = U&lat
-  jet_strength_lon = dim_max_n_Wrap(U, 0)
-  jet_strength = dim_avg_Wrap(jet_strength_lon)
-  return jet_strength
-end
-
-undef("calcJetAxisStrength")
-function calcJetAxisStrength(uwnd)
-local dims,dimNames,timeInd,timeLength,jetLats,jetStrength,tem
-begin
-  dims = dimsizes(uwnd)
-  dimNames = getvardims(uwnd)
-  timeInd = ind(dimNames .eq. "year")
-  timeLength = dims(timeInd)
-  jetLats = new(timeLength, float)
-  jetStrength = new(timeLength, float)
-  do i = 0, timeLength-1
-    ; jetLats(i) = getJetLat(uwnd(i,:,:))
-    ; jetStrength(i) = dim_avg_n_Wrap(uwnd(i,{jetLats(i)-4:jetLats(i)+4},:), (/0,1/))
-    jetStrength(i) = (/getJetAxisStrength(uwnd(i,:,:))/)
-    ; jetStrength(i) = (/0/)
-  end do
-  copy_VarCoords(uwnd(:,0,0), jetStrength)
-  return jetStrength
-end
-
-undef("newBoldHolyCircle")
-function newBoldHolyCircle(wks)
-local mstring,fontnum,xoffset,ratio,size,angle,new_index
-begin
-mstring = "o"
-  fontnum = 22
-  xoffset = 0.0
-  yoffset = 0.0
-  ratio   = 0.9
-  size    = 1.5
-  angle   = 0.0
-  new_index = NhlNewMarker(wks, mstring, fontnum, xoffset, yoffset, ratio, size, angle)
-  return new_index
-end
-
-undef("calcRunCorEAJWAJ")
-function calcRunCorEAJWAJ(type,rangeEAJ,rangeWAJ,window)
-local tp,U200,EAJ_index,WAJ_index,cor,method
-begin
-  method = "mean"
-  tp = type
-    tp@range := rangeEAJ
-  U200 := process(tp,method)
-  EAJ_index := calcJetAxisStrength(U200)
-    tp@range := rangeWAJ
-  U200 := process(tp,method)
-  WAJ_index := calcJetAxisStrength(U200)
-  cor := run_cor(WAJ_index, EAJ_index, window)
-  return cor
-end
-
-undef("calcJetLatitudeByAxis")
-function calcJetLatitudeByAxis(uwnd)
-local dims,dimNames,timeInd,timeLength,jetLats,tem
-begin
-  dims = dimsizes(uwnd)
-  dimNames = getvardims(uwnd)
-  timeInd = ind(dimNames .eq. "year")
-  timeLength = dims(timeInd)
-  jetLats = new(timeLength, float)
-  ; printVarSummary(uwnd)
-  do i = 0, timeLength-1
-    tem := getJetLat(uwnd(i,:,:))
-    jetLats(i) = getJetLat(uwnd(i,:,:))
-  end do
-  copy_VarCoords(uwnd(:,0,0), jetLats)
-  return jetLats
-end
-
-undef("calcJetStrengthByAxis")
-function calcJetStrengthByAxis(uwnd)
-local dims,dimNames,timeInd,timeLength,jetLats,jetStrength,tem
-begin
-  dims = dimsizes(uwnd)
-  dimNames = getvardims(uwnd)
-  timeInd = ind(dimNames .eq. "year")
-  timeLength = dims(timeInd)
-  jetLats = new(timeLength, float)
-  jetStrength = new(timeLength, float)
-  do i = 0, timeLength-1
-    tem := getJetLat(uwnd(i,:,:))
-    jetLats(i) = getJetLat(uwnd(i,:,:))
-    jetStrength(i) = dim_avg_n_Wrap(uwnd(i,{jetLats(i)-4:jetLats(i)+4},:), (/0,1/))
-  end do
-  copy_VarCoords(uwnd(:,0,0), jetStrength)
-  return jetStrength
-end
-
-
-
-
-
-undef("addShading")
-procedure addShading(plotid,upper,lower,opt)
-local tem_wks,xArray,yArray,rpoly,str
-begin
-  tem_wks = NhlGetParentWorkstation(plotid)
-  xArray = array_append_record(upper&year, lower&year(::-1), 0)
-  yArray = array_append_record(upper, lower(::-1), 0)
-  rpoly := True
-    rpoly@gsFillColor = get_res_value_keep(opt, "gsFillColor", "Tomato")
-    rpoly@gsFillOpacityF = get_res_value_keep(opt, "gsFillOpacityF", 0.1)
-    rpoly@tfPolyDrawOrder = "PreDraw"
-  str = unique_string("shading")
-  plotid@$str$ = gsn_add_polygon(tem_wks, plotid, xArray, yArray, rpoly)
-end
-
-undef("addSpreading")
-procedure addSpreading(plotid,data,opt)
-local tem_wks,data_mean,data_std,upper,lower
-begin
-  data_mean = dim_avg_n_Wrap(data, 0)
-  data_std = dim_stddev_n_Wrap(data, 0)
-  upper = data_mean+0.5*data_std
-  lower = data_mean-0.5*data_std
-  copy_VarCoords(data_mean, upper)
-  copy_VarCoords(data_mean, lower)
-  addShading(plotid,upper,lower,opt)
-end
-
-undef("trend_correct")
-function trend_correct(var)
-local weight,dim,var_correct,i
-begin
-  weight := (/30,-5,-1,-6,-1,-5,-2,-5,-1,-6,-1,-5,-2,-5,-1,-6,4,0,3,0,4,-1,4,0,3,0,4,-1,4,0,3,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1/)
-  dim = dimsizes(var)
-  var_correct := 30*var(45:)
-  do i = 1,45
-    var_correct = var_correct+weight(i)*var(45-i:dim-1-i)
-  end do
-  var_correct = var_correct/31.
-  copy_VarCoords(var(45:), var_correct)
-  return var_correct
-end
-
-undef("trend_correct3D")
-function trend_correct3D(var)
-local weight,dim,var_correct,i
-begin
-  weight := (/30,-5,-1,-6,-1,-5,-2,-5,-1,-6,-1,-5,-2,-5,-1,-6,4,0,3,0,4,-1,4,0,3,0,4,-1,4,0,3,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1/)
-  dim = dimsizes(var)
-  var_correct := 30*var(45:,:,:)
-  do i = 1,45
-    var_correct = var_correct+weight(i)*var(45-i:dim(0)-1-i,:,:)
-  end do
-  var_correct = var_correct/31.
-  copy_VarCoords(var(45:,:,:), var_correct)
-  ; copy_VarMeta(var(45,:,:), var_correct)
-  copy_VarAtts(var, var_correct)
-  return var_correct
-end
-
-;函数定义
-undef("projection")
-function projection(data,pattern)
-local ts,dims,patterns
-begin
-  dims = dimsizes(pattern)
-  patterns = new((/1,dims(0),dims(1)/),typeof(data))
-  patterns!0 ="env"
-  patterns(0,:,:) = pattern
-  ts = eofunc_ts_n_Wrap(data, patterns, True,0)
-  return ts(0,:)
-end
-begin
-  ;部分参数
-  folder = localpath(3)+"EurasianJet/Eurasian_figs/" ;"EAJ_plot"
-  setBufferPath(localpath(3)+".buffer/")
-  bufferMode = "disabled"
-  ; bufferMode = "smart"
-  fig = "pdf"
-    fig@wkPaperWidthF = 20
-    fig@wkPaperHeightF = 20
-  png = "png"
-    png@wkHeight = 2000
-    png@wkWidth = 2000
-  year := ispan(1958, 2022, 1)
-  year0 := ispan(1958, 1978, 1)
-  year1 := ispan(1979, 1998, 1)
-  year2 := ispan(1999, 2022, 1)
-  year01 := ispan(1958, 1998, 1)
-  month = (/7,8/)
-  rangeWAJ = (/40, 47, 45, 85/)
-  rangeEAJ = (/40, 47, 90, 130/)
-  setDim(year,0,"year",year)
-  setDim(year0,0,"year",year0)
-  setDim(year1,0,"year",year1)
-  WNPSH_level = 5870
-  SAH_level = 14360
-  labelColor = "#434343"
-;# ESWJ指数(急流轴强度)
-window = 21
-rangeWAJ := (/20, 70, 40, 80./)
-rangeEAJ := (/20, 70, 90, 123./)
-type := "u"
-  type@source = "ERA5"
-  type@month := (/7,8/)
-  type@year := ispan(1940, 2022, 1)
-  type@level = 200
-  type@range = (/10,80,-12.5,191/)
-method := "stddev"
-  method@detrend = False
-  type@range = (/20,60,30,155/)
-U200_sd := process(type,method)
-method := "mean"
-  method@detrend = False
-  type@range := (/20, 70, 23, 123./)
-  type@year := year
-U200 := process(type,method)
-ESWJ := calcJetAxisStrength(U200)
-ESWJ0 := dim_standardize_Wrap(ESWJ({year0}), 0)
-ESWJ1 := dim_standardize_Wrap(ESWJ({year1}), 0)
-ESWJ2 := dim_standardize_Wrap(ESWJ({year2}), 0)
-ESWJ01 := dim_standardize_Wrap(ESWJ({year01}), 0)
-  type@range = rangeWAJ
-U200 := process(type,method)
-WAJ_index := calcJetAxisStrength(U200)
-  type@range = rangeEAJ
-U200 := process(type,method)
-EAJ_index := calcJetAxisStrength(U200)
-
-;# 急流轴计算
-type := "u"
-  type@source = "ERA5"
-  type@range = (/20,60,15,160/)
-  type@year := ispan(1958, 2022, 1)
-  type@level = 200
-;   type@month = 4
-method = "clim"
-  type@month := (/7,8/)
-U200_clim := process(type,method)
-lat_JA := getJetLats(U200_clim)
-lat_JA := runave_Wrap(lat_JA, 7, 0)
-
-;# EOF计算
-; year0 := ispan(1958, 1978, 1)
-; year1 := ispan(1979, 1998, 1)
-; year2 := ispan(1999, 2022, 1)
-opt := True
-type = "u"
-  type@level = 200
-  ; type@year := ispan(1999,2018,1)
-  type@year := year0
-  ; type@year := ispan(1999,2018,1)
-  type@month := (/7,8/)
-  type@source = "ERA5"
-  type@range = (/20,65,0,150/)
-  ; type@range = (/20,65,20,150/)
-  ; range = (/20,55,80,130/)
-; range = (/20,60,80,130/)
-method = "anom"
-  method@detrend = False
-; print(opt)
-X := process(type,opt)
-    opt@neof = 3
-    opt@jopt = 0
-    opt@weight = True
-    opt@reof = False
-    opt@rev := (/-1, -1,1/)
-    opt@name = "EAJ"
-    opt@lbOrientation = "Vertical"
-    opt@xcnLevels = (/-4,-3,-2,-1,1,2,3,4/)
-    opt@minmax = (/-3,3/)
-EAJ0 := EOF(X,opt)
-    EAJ0@units = ""
-    pcvar0 := EAJ0@pcvar
-
-    opt@rev = (/1, -1,-1/)
-    type@year := year1
-X := process(type,opt)
-EAJ1 := EOF(X,opt)
-    EAJ1@units = ""
-    pcvar1 := EAJ1@pcvar
-
-
-    opt@rev = (/1, -1,1/)
-    type@year := year2
-X := process(type,opt)
-EAJ2 := EOF(X,opt)
-    EAJ2@units = ""
-    pcvar2 := EAJ2@pcvar
-EOF_pattern = regCoef_n(EAJ2(0,:), X, 0, 0)
-
-    type@year := year01
-X := process(type,opt)
-EAJ01 := EOF(X,opt)
-    EAJ01@units = ""
-    pcvar01 := EAJ01@pcvar
-EOF1_p0 := EAJ0(0,:)
-EOF1_p1 := EAJ1(0,:)  
-EOF1_p2 := EAJ2(0,:)  
-EOF1_p01 := EAJ01(0,:)  
-
-EOF2_p0 := EAJ0(1,:)
-EOF2_p1 := EAJ1(1,:)  
-EOF2_p2 := EAJ2(1,:)  
-EOF2_p01 := EAJ01(1,:) 
-;# 投影得到指数
-    type@year := year
-X := process(type,opt)
-Xw = latWeight(X)
-EWJA = projection(X,EOF_pattern)
-EWJA = dim_standardize_Wrap(EWJA, 0)
-EWJA01 = dim_standardize_Wrap(EWJA({year01}), 0)
-EWJA2 = dim_standardize_Wrap(EWJA({year2}), 0)
+  pdf = "pdf"
+    pdf@wkPaperWidthF = 30
+    pdf@wkPaperHeightF = 30
 
 ts := EWJA
 ts({year01}) = (/designal(ts({year01}),EAJ01(0,:))/)
@@ -391,8 +45,8 @@ ts1 := EAJ1(modeIndex,:)
 ts2 := EAJ2(modeIndex,:)  
 fileName = "NC_fig2"
 itemType = "Nature"
-wks = gsn_open_wks(png,fileName)
-;# fig1A-D
+wks = gsn_open_wks(pdf,fileName)
+;# fig2A-D
 ranges := (/20,65,0,150/)
 size := 4
   ; size@vpHeightF = 0.55
@@ -410,8 +64,9 @@ size := 4
   ; size@tiMainOffsetYF = (/-0.015,-0.015,0.02,0.02/)-0.065
   size@tiMainOffsetYF = (/-0.02,-0.02,0.02,0.02/)-0.06
   size@tiMainOffsetXF = -0.13
-  size@tiYAxisString = (/"~F22~1958-1998~F21~","","~F22~1999-2022~F21~",""/)
+  size@tiYAxisString = (/"~F22~P1~F21~","","~F22~P2~F21~",""/)
   size@tiYAxisFontHeightF = 0.038
+  size@tiYAxisAngleF = 0
   ; size@tiYAxisOffsetXF = -0.01
   size@gsnLeftStringFontHeightF = 0.045
   size@gsnLeftStringParallelPosF = 0.31
@@ -421,18 +76,24 @@ size := 4
   size@mpLambertParallel1F = 20
   size@mpLambertParallel2F = 55
   ; size@gsnMaskLambertConformal = True
-  size@mpGridAndLimbOn = True
+  size@mpGridAndLimbOn = False
   size@mpGridLonSpacingF = 30
   size@mpGridLatSpacingF = 15
   size@mpGridLineThicknessF = 0.5
   ; size@mpGridLineDashPattern = 1
-  size@mpGeophysicalLineColor = "#206e22"
+  ; size@mpGeophysicalLineColor = "#206e22"
+  size@mpGeophysicalLineColor = "Black"
+  size@mpGeophysicalLineColor = "#78CFD5"
   size@mpPerimOn         = False 
   ; size@mpPerimDrawOrder = "PostDraw"
 
   size@mpProjection      = "Satellite"
   size@mpCenterLatF      = 35.
-  size@mpLandFillColor = "transparent"
+  ; size@mpLandFillColor = "transparent"
+  ; size@mpLandFillColor = "#f2f2f2"
+  size@mpLandFillColor = "White"
+  ; size@mpFillColor = "#f2f2f2"
+  ; size@mpFillColors = (/"#f2f2f2"/)
   size@mpCenterLonF = 80
   size@mpLimitMode = "LatLon"
   size@mpMaxLatF = 67
@@ -453,12 +114,11 @@ type := "u"
   type@range(3) = 360
 opt := True
 optreg := True
-notDrawAndFrame(opt)
+notDrawAndFrame(optreg)
   opt@Scale = 0.7
   opt@gsnStringBold = True
   opt@lbLabelBarOn = False
   opt@pmLabelBarWidthF = 0.7
-  opt@lbLabelStride = 3
 
   opt@detrend = False
   opt@cnFillDotSizeF = 0.004
@@ -474,11 +134,15 @@ notDrawAndFrame(opt)
     ; opt@tiYAxisOffsetXF = 0.025
     ; opt@tiXAxisString = "Longitude"
     ; opt@tiXAxisOffsetYF = -0.04
-  opt@cnFillColors = (/"#0E2245","#223868","#105797","#1B71B6","#2392C9","#28A0CE","#4EC0D9","#98D6E3","#FFFFFF","#F6B8AA","#F28D75","#EE6B54","#EA463B","#E82229","#BE252B","#871E20","#6B1014"/)
+  ; opt@cnFillColors = (/"#407933","#72BF4F","#9BCE7F","#C1E0B8","#FFFFFF","#F6E9BC","#F1CD5C","#F0BF2A","#A57E1E"/)
+  opt@cnFillColors = (/"#407933","#72BF4F","#9BCE7F","#C1E0B8","#FFFFFF","#F6E9BC","#F1CD5C","#F0BF2A","#A57E1E"/)
+  opt@cnLevels = (/-0.7,-0.5,-0.3,-0.1,0.1,0.3,0.5,0.7/)
+  opt@lbLabelFormat = "%0.1f"
+  ; opt@cnFillColors = (/"#0E2245","#223868","#105797","#1B71B6","#2392C9","#28A0CE","#4EC0D9","#98D6E3","#FFFFFF","#F6B8AA","#F28D75","#EE6B54","#EA463B","#E82229","#BE252B","#871E20","#6B1014"/)
+  ; opt@cnLevels = (/-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.25,0.25,0.3,0.4,0.5,0.6,0.7,0.8,0.9/)
   t = t_value(dimsizes(year01))
   print(t)
   ; opt@cnLevels = (/-0.9,-0.8,-0.7,-0.6,-0.55,-0.5,-0.45,-t@r90,t@r90,0.45,0.5,0.55,0.6,0.7,0.8,0.9/)
-  opt@cnLevels = (/-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.25,0.25,0.3,0.4,0.5,0.6,0.7,0.8,0.9/)
 add_cor(plot(0),EOF1_p01,type,ranges,opt)
 add_cor(plot(1),EOF2_p01,type,ranges,opt)
   ; opt@cnLevels = (/-0.9,-0.8,-0.7,-0.6,-0.55,-0.5,-0.45,-0.3783408,0.3783408,0.45,0.5,0.55,0.6,0.7,0.8,0.9/)
@@ -489,16 +153,9 @@ add_cor(plot(1),EOF2_p01,type,ranges,opt)
 add_cor(plot(2),EOF1_p2,type,ranges,opt)
 add_cor(plot(3),EOF2_p2,type,ranges,opt)
 optreg@cnFillOn = False
-optreg@cnLinesOn = True
 optreg@test = True
-optreg@mode = "hatching"
-optreg@hatchingRepeat = 1
-optreg@hatchingColor = "#cecece"
-optreg@cnFillScaleF = 1
 ; optreg@hatchingPattern = 8
-optreg@sigLevel = 95
 optreg@cnLineThicknessF = 2.
-optreg@Scale = 1.
 optreg@smoothing = True
 ; optreg@cnLineLabelsOn = True
 ; optreg@cnLineLabelInterval = 1
@@ -506,11 +163,64 @@ optreg@smoothing = True
 ; optreg@cnLineLabelFontColor = "#206e22"
 ; optreg@cnLineLabelFont = 22
 ; optreg@cnLineLabelFontHeightF = 0.02
+
+;# 青藏高原
+res_topo := True
+  res_topo@mode = "contour"
+  res_topo@cnLineColor = "#575757"
+  res_topo@cnLineThicknessF = 5.
+  res_topo@cnFillOpacityF = 0.7
+  res_topo@cnFillColor = "#575757"
+  ; res_topo@cnLineDrawOrder = "PreDraw"
+ranges(2) = 40
+add_topo(plot(0),ranges,3000,res_topo)
+add_topo(plot(1),ranges,3000,res_topo)
+add_topo(plot(2),ranges,3000,res_topo)
+add_topo(plot(3),ranges,3000,res_topo)
+
+
+optreg@cnLinesOn = False
+optreg@FDR = False
+optreg@mode = "contour"
+optreg@sigLevel = 95
+optreg@cnFillScaleF := 1.5
+; optreg@stipplingColor = "#b8b8b8"
+; optreg@stipplingColor = "#cdcdcd"
+; optreg@stipplingColor = "#0e5670"
+optreg@stipplingColor = "Grey"
+optreg@cnFillDotSizeF = 0.0045
+optreg@cnLineColor = "Black"
+optreg@cnLineThicknessF = 5
+notDrawAndFrame(optreg)
 add_reg(plot(0),EOF1_p01,type,ranges,optreg)
 add_reg(plot(1),EOF2_p01,type,ranges,optreg)
-; add_reg(plot(1),ts1,type,ranges,optreg)
 add_reg(plot(2),EOF1_p2,type,ranges,optreg)
 add_reg(plot(3),EOF2_p2,type,ranges,optreg)
+
+
+optreg@cnLinesOn = False
+optreg@FDRRange = rangeEOF
+optreg@FDR = True
+; optreg@mode = "hatching"
+optreg@mode = "stippling"
+optreg@sigLevel = 90
+optreg@hatchingRepeat = 3
+optreg@Scale = 1.1
+optreg@cnFillScaleF := 1.5
+; optreg@cnFillScaleF = 1.125
+; optreg@hatchingColor = "#cdcdcd"
+; optreg@hatchingColor = "#f8f8f8"
+optreg@hatchingColor = "White"
+optreg@stipplingColor = "White"
+; optreg@stipplingColor = "Grey43"
+optreg@cnFillDotSizeF = 0.0045
+add_reg(plot(0),EOF1_p01,type,ranges,optreg)
+add_reg(plot(1),EOF2_p01,type,ranges,optreg)
+add_reg(plot(2),EOF1_p2,type,ranges,optreg)
+add_reg(plot(3),EOF2_p2,type,ranges,optreg)
+
+
+
 
   opt@cnLevels := 20
   opt@cnLineThicknessF = 10
@@ -521,35 +231,76 @@ type@year = year
 ; add_clim(plot(1),type,ranges,opt)
 ; add_clim(plot(2),type,ranges,opt)
 ;# 急流轴
-line := ""
+; line := ""
+;     line@txFontHeightF = 0.04
+;     line@txFont = 22
+;     line@txJust = "CenterLeft"
+;     line@txOffsetXF = 4
+;     line@txOffsetYF = -1
+;     ; line@txLineHeightF = 1.
+;     ; line@gsLineDashPattern = 1
+;     line@txJust = "BottomLeft"
+;     line@txOffsetYF = -25
+;     line@txOffsetXF = -145
+;     line@txOffsetXF = -145
+;     line@txOffsetYF = -10
+;     line@gsLineThicknessF = 15
+;     line@gsLineDashPattern = 0
+;     line@gsLineColor = "Firebrick1"
+;     ; line@gsLineColor = "#c872fe"
+;     ; line@gsLineColor = "#eece00"
+;     line@txJust = "BottomLeft"
+;     line@txFontColor = "#0000ff"
+;   lat_JA_new = lat_JA({23:123})
+;   add_line(plot(0),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(1),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(2),lat_JA_new&lon,lat_JA_new,line)
+;   add_line(plot(3),lat_JA_new&lon,lat_JA_new,line)
+
+  line := ""
     line@txFontHeightF = 0.04
     line@txFont = 22
     line@txJust = "CenterLeft"
     line@txOffsetXF = 4
     line@txOffsetYF = -1
     ; line@txLineHeightF = 1.
+    line@gsLineThicknessF = 7
     ; line@gsLineDashPattern = 1
     line@txJust = "BottomLeft"
     line@txOffsetYF = -25
     line@txOffsetXF = -145
     line@txOffsetXF = -145
     line@txOffsetYF = -10
-    line@gsLineThicknessF = 15
+    line@gsLineThicknessF = 25
     line@gsLineDashPattern = 0
-    ; line@gsLineColor = "#c872fe"
-    line@gsLineColor = "#eece00"
+    line@gsLineColor = "#0082df"
     line@txJust = "BottomLeft"
-    line@txFontColor = "#0000ff"
-  lat_JA_new = lat_JA({23:123})
-  add_line(plot(0),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(1),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(2),lat_JA_new&lon,lat_JA_new,line)
-  add_line(plot(3),lat_JA_new&lon,lat_JA_new,line)
+    line@txFontColor = "#0082df"
+  lat_JA_WAJ_P1 = lat_JA01({rangeWAJ(2):rangeWAJ(3)})
+  lat_JA_WAJ_P2 = lat_JA2({rangeWAJ(2):rangeWAJ(3)})
+  lat_JA_EAJ_P1 = lat_JA01({rangeEAJ(2):rangeEAJ(3)})
+  lat_JA_EAJ_P2 = lat_JA2({rangeEAJ(2):rangeEAJ(3)})
+  lat_JA_Center_P1 = lat_JA01({rangeWAJ(3):rangeEAJ(2)})
+  lat_JA_Center_P2 = lat_JA2({rangeWAJ(3):rangeEAJ(2)})
+  add_line(plot(0),lat_JA_WAJ_P1&lon,lat_JA_WAJ_P1,line)
+  add_line(plot(1),lat_JA_WAJ_P1&lon,lat_JA_WAJ_P1,line)
+  add_line(plot(2),lat_JA_WAJ_P2&lon,lat_JA_WAJ_P2,line)
+  add_line(plot(3),lat_JA_WAJ_P2&lon,lat_JA_WAJ_P2,line)
+    line@gsLineColor = "red"
+    line@txFontColor = "red"
+  add_line(plot(0),lat_JA_EAJ_P1&lon,lat_JA_EAJ_P1,line)
+  add_line(plot(1),lat_JA_EAJ_P1&lon,lat_JA_EAJ_P1,line)
+  add_line(plot(2),lat_JA_EAJ_P2&lon,lat_JA_EAJ_P2,line)
+  add_line(plot(3),lat_JA_EAJ_P2&lon,lat_JA_EAJ_P2,line)
 
-box := (/20,65,00,150/)
-  box@gsLineThicknessF = 3
-  box@gsLineColor = "Magenta"
-  box@gsLineDashPattern = 1
+
+box := rangeEOF
+  box@gsLineThicknessF = 5
+  ; box@gsLineColor = "Magenta"
+  ; box@gsLineColor = "Firebrick1"
+  box@gsLineColor = "DodgerBlue"
+  ; box@gsLineDashPattern = 1
+  box@gsLineDashPattern = 0
 add_lineBox(plot(0),box)
 add_lineBox(plot(1),box)
 add_lineBox(plot(2),box)
@@ -569,25 +320,15 @@ rlable := True
 ; add_lc_labels(plot(2),ranges,rlable)
 ; add_lc_labels(plot(3),ranges,rlable)
 
-;# 青藏高原
-res_topo := True
-  res_topo@mode = "contour"
-  res_topo@cnLineColor = "#575757"
-  res_topo@cnLineThicknessF = 5.
-  res_topo@cnFillOpacityF = 0.7
-  res_topo@cnFillColor = "#575757"
-ranges(2) = 40
-add_topo(plot(0),ranges,3000,res_topo)
-add_topo(plot(1),ranges,3000,res_topo)
-add_topo(plot(2),ranges,3000,res_topo)
-add_topo(plot(3),ranges,3000,res_topo)
+
 
 ;# 前四张组图
 resp := True
   ; resp@gsnPanelMainString = "U200 EOF1"
   resp@gsnPanelLabelBar = True
   resp@lbLabelFontHeightF = 0.015
-  resp@lbLabelStride = 3
+  resp@lbLabelStride = 1
+  ; resp@lbLabelStride = 3
   resp@lbTitleString = "Correlation"
   resp@lbTitleFontHeightF = 0.015
   resp@lbTitlePosition = "Right"
@@ -610,15 +351,20 @@ gsn_panel(wks,plot,(/2,2/),resp)
 ;# 时间序列
 opt := True
 notDrawAndFrame(opt)
-  opt@gsnLeftString = genItem("e",itemType)+"  ESWJ Index"
+  ; opt@gsnLeftString = genItem("e",itemType)+"  UDZC Index"
+  opt@gsnLeftString = genItem("e",itemType)+"  PC1"
   opt@gsnLeftStringFontHeightF = 0.025
-  opt@gsnLeftStringOrthogonalPosF = 0.045
+  opt@gsnLeftStringOrthogonalPosF = 0.04
   opt@gsnLeftStringParallelPosF = -0.03
-  opt@gsnRightString = "&         Index"
-  opt@gsnRightStringOrthogonalPosF = 0.05
-  opt@gsnRightStringFontHeightF = 0.022
-  opt@gsnCornerStringFontHeightF = 0.035
-  opt@gsnCornerOffsetXF = 0.05
+  opt@gsnCenterString = "WJA index"
+  opt@gsnCenterStringFontColor = "DodgerBlue"
+  opt@gsnCenterStringFontHeightF = 0.025
+  opt@gsnCenterStringParallelPosF = 0.78
+  opt@gsnCenterStringOrthogonalPosF = 0.04
+  opt@gsnRightString = "EJA index"
+  opt@gsnRightStringFontColor = "firebrick1"
+  opt@gsnRightStringFontHeightF = 0.025
+  opt@gsnRightStringOrthogonalPosF = 0.04
   opt@tiXAxisString = "Year"
   opt@tiXAxisFontHeightF = 0.02
   opt@tiYAxisString = "std. dev."
@@ -626,7 +372,7 @@ notDrawAndFrame(opt)
   opt@tiYAxisOffsetXF = 0.005
   opt@tmXBTickSpacingF = 10
   opt@tmXBTickStartF = 1960
-  opt@vpHeightF = 0.38
+  opt@vpHeightF = 0.3
   opt@vpWidthF = 1.27
   opt@tmXBLabelFontHeightF = 0.02
   opt@tmXBLabelFontColor = labelColor
@@ -637,7 +383,7 @@ notDrawAndFrame(opt)
   ; opt@tmYLFormat = "%0.0f"
   ; opt@trYMaxF = 7
   ; opt@trYMinF = -7
-  opt@minmax = (/-3.35,3.4/)
+  opt@minmax = (/-3,3.4/)
   ; opt@tmYLLabelFont = 22
   opt@tmYROn = False
   opt@tmYUseLeft = False
@@ -653,7 +399,7 @@ notDrawAndFrame(opt)
   ; opt@tmYRTickEndF = 4
   opt@tmYRLabels = (/"-3","-2","-1","0","1","2","3"/)
   ; opt@gsnXYBarChartColors = "#F1CD5C"
-  opt@gsnXYBarChartColors = "Black"
+  ; opt@gsnXYBarChartColors = "Grey"
   opt@gsnXYBarChartFillOpacityF = 0.8
 
   ; opt@tmYRLabelFontHeightF = 0.01
@@ -662,15 +408,26 @@ notDrawAndFrame(opt)
 ; print(combined_index)
 ; combined_index = (/dtrend_leftdim(combined_index, True)/)
 ts := EWJA
-ts({year01}) = (/designal(ts({year01}),EAJ01(0,:))/)
-ts = (/dtrend_leftdim(ts, True)/)
-print(escorc(ts({year01}), EAJ01(0,:)))
+; ts({year01}) = (/designal(ts({year01}),EAJ01(0,:))/)
+; ts = (/dtrend_leftdim(ts, True)/)
+; print(escorc(ts({year01}), EAJ01(0,:)))
+ts({year01}) = (/EOF1_p01/)
+ts({year2}) = (/EOF1_p2/)
 
 
 
 ; exit()
 ; ts := combined_index
+; opt@gsnXYBarChart = False
+; opt@xyLineColor = "Black"
+barColorP1 = "Grey"
+barColorP2 = "Black"
+; opt@gsnXYBarChartColors := (/barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2/)
+; opt@gsnXYBarChartColors2 = (/barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP1,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2,barColorP2/)
+  opt@gsnXYBarChartColors = "Black"
 plotEAWJ = plot_ts(wks,ts,opt)
+;   opt@gsnXYBarChart = True
+; add_ts(plotEAWJ,EOF1_p2,opt)
 ; resTrend := True
 ;   resTrend@xyDashPattern = 1
 ;   resTrend@xyLineThicknesses = 7
@@ -696,7 +453,7 @@ yref := (/-stddev(ESWJ),stddev(ESWJ)/)
 
 opt := True
 notDrawAndFrame(opt)
-  opt@gsnLeftString = "ESWJ"
+  opt@gsnLeftString = "UDZC"
   opt@gsnLeftStringFontHeightF = 0.015
   opt@gsnLeftStringOrthogonalPosF = 0.02
   opt@gsnLeftStringParallelPosF = 0.03
@@ -710,31 +467,32 @@ notDrawAndFrame(opt)
   ; opt@vpYF = 0.57
   opt@tmXBTickSpacingF = 10
   opt@tmXBTickStartF = 1960
-; ; plot(0) = gsn_csm_xy(wks, Jet_ERA5&year, Jet_ERA5, opt)
-; plot_ESWJ = plot_ts(wks,dim_standardize_Wrap(combined_index, 0),opt)
-  opt@xyLineColor = "DodgerBlue"
-; opt@xyMarkLineMode = "Markers"
-; print(t_value(18))
-  opt@xyLineThicknessF = 15
-; nblc = newBoldHolyCircle(wks)
-; opt@xyMarkers = nblc
-; opt@xyMarkerSizeF = 0.015
-WAJ_index2 = dim_standardize_Wrap(WAJ_index({year2}), 0)
-add_ts(plotEAWJ,WAJ_index2,opt)
-opt@xyLineColor = "firebrick1"
-ts1_amp := ts1*2.5
-copy_VarCoords(ts1, ts1_amp)
-EAJ_index2 = dim_standardize_Wrap(EAJ_index({year2}), 0)
-add_ts(plotEAWJ,EAJ_index2,opt)
+  res = True
+  res@xyLineColor = "DodgerBlue"
+  res@xyMarkLineMode = "MarkLines"
+  res@xyMarkerSizeF = 0.012
+  res@xyLineThicknessF = 5
+  WAJ_index = dim_standardize_Wrap(WAJ_index, 0)
+add_ts(plotEAWJ,WAJ_index,res)
+  res@xyLineColor = "transparent"
+  res@xyMarkerSizeF = 0.010
+  res@xyMarkerColors = "White"
+add_ts(plotEAWJ,WAJ_index,res)
+  res@xyLineThicknessF = 8
+  res@xyMarkLineMode = "Lines"
+  res@xyLineColor = "firebrick1"
+  EAJ_index = dim_standardize_Wrap(EAJ_index, 0)
+add_ts(plotEAWJ,EAJ_index,res)
+
 opt@xyLineColor = "DimGray"
 opt@xyLineThicknessF = 5
 opt@xyMarkLineMode = "Lines"
-add_ts(plotEAWJ,EOF1_p01,opt)
-add_ts(plotEAWJ,EOF1_p2,opt)
+; add_ts(plotEAWJ,EOF1_p01,opt)
+; add_ts(plotEAWJ,EOF1_p2,opt)
 opt@xyLineColor = "DimGray"
 opt@xyDashPattern = 13
-add_ts(plotEAWJ,EOF2_p01,opt)
-add_ts(plotEAWJ,EOF2_p2,opt)
+; add_ts(plotEAWJ,EOF2_p01,opt)
+; add_ts(plotEAWJ,EOF2_p2,opt)
 
 opt@xyMarkLineMode = "MarkLines"
 opt@xyMarker = 4
@@ -742,42 +500,45 @@ opt@xyMarkerSizeF = 0.014
 ; opt@xyMarkerThicknessF
 ; add_ts(plotEAWJ,ts2,opt)
 ts_tem := dim_standardize_Wrap(ESWJ({year01}), 0)
-text := "R (ESWJ, WJA) = "+sprintf("%0.2f", escorc(EWJA2,WAJ_index2))+", p < 1e-5"
+df = dimsizes(EWJA2)-2
+R_UDZC_WJA = escorc(EWJA2,WAJ_index2)
+R_UDZC_EJA = escorc(EWJA2,EAJ_index2)
+text := "R (UDZC, WJA) = "+sprintf("%0.2f", R_UDZC_WJA)+", ~F21~"+r2pStringDev(R_UDZC_WJA,df)
 ; text := "R = "+sprintf("%0.2f", escorc(ts0, ESWJ0))+", p<0.01"
   text@txFontHeightF = 0.02
   text@txFontColor = "DodgerBlue"
   text@txFont = 22
-add_text(plotEAWJ,text,2011,-2.9)
+; add_text(plotEAWJ,text,2011,-2.9)
 ; add_text(plotEAWJ,text,1965,-6.)
 
-text = "R (ESWJ, EJA) = "+sprintf("%0.2f", escorc(EWJA2,EAJ_index2))+", p < 1e-5"
+text = "R (UDZC, EJA) = "+sprintf("%0.2f", R_UDZC_EJA)+", ~F21~"+r2pStringDev(R_UDZC_EJA,df)
 ; text = "R = "+sprintf("%0.2f", escorc(ts2, ESWJ2))+", p<0.01"
   text@txFontColor = "firebrick1"
-add_text(plotEAWJ,text,2011,2.9)
+; add_text(plotEAWJ,text,2011,2.9)
 
 text = "PC1"
   text@txFontColor = "DimGray"
   text@txJust = "CenterLeft"
-add_text(plotEAWJ,text,1962,-2.5)
+; add_text(plotEAWJ,text,1962,-2.5)
 text = "PC2"
-add_text(plotEAWJ,text,1970,-2.5)
+; add_text(plotEAWJ,text,1970,-2.5)
 
 resLine := True
   resLine@gsLineThicknessF = 5
   resLine@gsLineColor = "DimGray"
-add_line(plotEAWJ,(/1958,1961/),(/-2.5,-2.5/),resLine)
+; add_line(plotEAWJ,(/1958,1961/),(/-2.5,-2.5/),resLine)
   resLine@gsLineDashPattern = 13
-add_line(plotEAWJ,(/1966,1969/),(/-2.5,-2.5/),resLine)
+; add_line(plotEAWJ,(/1966,1969/),(/-2.5,-2.5/),resLine)
 text := "WJA"
   text@txFontColor = "#0082df"
   text@txJust = "CenterLeft"
   text@txFontHeightF = 0.022
-textY = 1.225
-add_string(plotEAWJ,text,0.81,textY)
+textY = 1.215
+; add_string(plotEAWJ,text,0.81,textY)
 
 text = "EJA"
   text@txFontColor = "red"
-add_string(plotEAWJ,text,0.891,textY)
+; add_string(plotEAWJ,text,0.892,textY)
 
 resp := True
   resp@gsnFrame = False
@@ -789,16 +550,28 @@ resp := True
   resp@gsnPanelScaleF = 0.7
 gsn_panel(wks,plotEAWJ,(/1,1/),resp)
 
+ts := EWJA
+cor_UDZC_PC1_P1 = escorc(ts({year01}), EOF1_p01)
+cor_UDZC_PC2_P1 = escorc(ts({year01}), EOF2_p01)
+cor_WJA_PC1_P1 = escorc(WAJ_index01, EOF1_p01)
+cor_WJA_PC2_P1 = escorc(WAJ_index01, EOF2_p01)
+cor_EJA_PC1_P1 = escorc(EAJ_index01, EOF1_p01)
+cor_EJA_PC2_P1 = escorc(EAJ_index01, EOF2_p01)
 
-
+cor_UDZC_PC1_P2 = escorc(EWJA2, EOF1_p2)
+cor_UDZC_PC2_P2 = escorc(EWJA2, EOF2_p2)
+cor_WJA_PC1_P2 = escorc(WAJ_index2, EOF1_p2)
+cor_WJA_PC2_P2 = escorc(WAJ_index2, EOF2_p2)
+cor_EJA_PC1_P2 = escorc(EAJ_index2, EOF1_p2)
+cor_EJA_PC2_P2 = escorc(EAJ_index2, EOF2_p2)
 ;# 热力图
 data := (/\
-  (/0.025,0.135/),\
-  (/-0.533,0.171/),\
-  (/-0.288,-0.18/),\
-  (/0.999,0.005/),\
-  (/0.855,0.269/),\
-  (/0.957,0.002/)\
+  (/cor_UDZC_PC1_P1,cor_UDZC_PC2_P1/),\
+  (/cor_WJA_PC1_P1,cor_WJA_PC2_P1/),\
+  (/cor_EJA_PC1_P1,cor_EJA_PC2_P1/),\
+  (/cor_UDZC_PC1_P2,cor_UDZC_PC2_P2/),\
+  (/cor_WJA_PC1_P2,cor_WJA_PC2_P2/),\
+  (/cor_EJA_PC1_P2,cor_EJA_PC2_P2/)\
 /)
 dataColor := (/\
   (/"Grey30","Grey30"/),\
@@ -825,7 +598,7 @@ notDrawAndFrame(opt)
   opt@tmXBTickSpacingF = 10
   opt@vpHeightF = 0.45
   opt@vpWidthF = 0.18
-  opt@vpXF = 0.79
+  opt@vpXF = 0.785
   opt@vpYF = 0.95
   opt@pmLabelBarWidthF = 0.9
   opt@pmLabelBarHeightF = 0.07
@@ -867,11 +640,11 @@ notDrawAndFrame(opt)
   opt@tmXTLabelFontHeightF = 0.013
   opt@tmXTLabelDeltaF = -0.3
   opt@tmXTOn = True
-  opt@tiYAxisString = "~F22~1958-1998                           1999-2022~F21~"
+  opt@tiYAxisString = "~V-15F22~P1~C~~C~~C~~C~~C~~C~~C~~C~~C~~C~~C~P2~F21~"
   opt@tiYAxisFontHeightF = 0.014
-  opt@tiYAxisOffsetXF = 0.022
   opt@tiYAxisAngleF = -90
-  opt@tiYAxisOffsetXF = 0.279
+  opt@tiYAxisOffsetXF = 0.281
+  opt@tiYAxisAngleF = 0
   opt@gsnMaximize = False
   opt@lbLabelBarOn = False
   opt@txFontHeightF = 0.015
@@ -890,9 +663,9 @@ res_line := True
   res_line@gsLineDashPattern = 16
   res_line@tfPolyDrawOrder = "PostDraw"
   res_line@gsFillColor = "#FFBE00"
-gsn_polygon_ndc(wks, (/0.5,0.5,0.508,0.508/)+0.47, (/0.725,0.9505,0.9505,0.725/), res_line)
+gsn_polygon_ndc(wks, (/0.5,0.5,0.508,0.508/)+0.463, (/0.725,0.9505,0.9505,0.725/), res_line)
   res_line@gsFillColor = "#4D4D4D"
-gsn_polygon_ndc(wks, (/0.5,0.5,0.508,0.508/)+0.47, (/0.7255,0.951,0.951,0.7255/)-0.226, res_line)
+gsn_polygon_ndc(wks, (/0.5,0.5,0.508,0.508/)+0.463, (/0.7255,0.951,0.951,0.7255/)-0.226, res_line)
 
 ; gsn_polyline_ndc(wks, (/0.5,0.5/), (/0.7,0.9/), resLine)
 ; pgres := (/-10,10,1998.5,2023/)
@@ -901,9 +674,9 @@ gsn_polygon_ndc(wks, (/0.5,0.5,0.508,0.508/)+0.47, (/0.7255,0.951,0.951,0.7255/)
 ; add_fillBox(plot_ESWJ,pgres)
 ; draw(plot_ESWJ)
 ; frame(wks)
-; delete(wks)
-; ; system("gs -q -sDEVICE=png16m -sBATCH -sOutputFile="+fileName+".png -dNOPAUSE -r200 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "+fileName+".pdf")
-; show(fileName)
-frame(wks)
+delete(wks)
+system("gs -q -sDEVICE=png16m -sBATCH -sOutputFile="+fileName+".png -dNOPAUSE -r200 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "+fileName+".pdf")
 show(fileName+".png")
+; frame(wks)
+; show(fileName+".png")
 end

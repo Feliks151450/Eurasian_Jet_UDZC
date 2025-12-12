@@ -230,9 +230,9 @@ begin
   setBufferPath(localpath(3)+".buffer/")
   bufferMode = "disabled"
   ; bufferMode = "smart"
-  fig = "pdf"
-    fig@wkPaperWidthF = 20
-    fig@wkPaperHeightF = 20
+  pdf = "pdf"
+    pdf@wkPaperWidthF = 20
+    pdf@wkPaperHeightF = 20
   png = "png"
     png@wkHeight = 2000
     png@wkWidth = 2000
@@ -249,7 +249,8 @@ begin
   setDim(year1,0,"year",year1)
   setDim(year01,0,"year",year01)
   WNPSH_level = 5870
-  SAH_level = 14360
+  ; SAH_level = 14360
+  SAH_level = 12530
 ;# ESWJ指数(急流轴强度)
 window = 21
 rangeWAJ := (/20, 70, 40, 80./)
@@ -376,14 +377,16 @@ ts0 := EWJA01
   ind_h0 := ind(ts0 .ge.  0.5)
   ind_l0 := ind(ts0 .le. -0.5)
 ; print(ESWJ2)
-; print(year2(ind_h1))
-; print(year2(ind_l1))
+print(year2(ind_h1))
+print(year2(ind_l1))
+print(year01(ind_h0))
+print(year01(ind_l0))
 ; print(ind_l1)
 opt = True
 ranges := (/10,50,10,120/)
 range := (/0,50,100,190/)
 type := "H"
-type@level := 150
+type@level := 200
 type@month := (/7,8/)
 type@source = "era5"
 type@range = ranges
@@ -420,14 +423,14 @@ WPSH_l1 := process(type_l,opt)
 type_l@year := ts0&year(ind_l0)
 WPSH_l0 := process(type_l,opt) 
 
-type_h@level = 150
+type_h@level = 200
 type_h@range = (/00,80,20,130/)
 type_h@year := ts1&year(ind_h1)
 SAH_h1 := process(type_h,opt)
 type_h@year := ts0&year(ind_h0)
 SAH_h0 := process(type_h,opt)
 
-type_l@level = 150
+type_l@level = 200
 type_l@range = (/00,80,20,130/)
 type_l@year := ts1&year(ind_l1)
 SAH_l1 := process(type_l,opt)
@@ -455,7 +458,7 @@ year1 := ispan(1979, 1998, 1)
 year2 := ispan(1999, 2022, 1)
 plot := newPlots(8)
 fileName = "NC_fig4"
-wks := gsn_open_wks(png,fileName)
+wks := gsn_open_wks(pdf,fileName)
 labelColor = "#434343"
 
 ;# Fig1a
@@ -485,7 +488,7 @@ notDrawAndFrame(opt)
   opt@mpGridLonSpacingF = 30
   opt@mpGridLatSpacingF = 15
   ; opt@vpXF = -0.1
-  ; opt@mpGeophysicalLineColor = "#59cbcd"
+  opt@mpGeophysicalLineColor = "#78CFD5"
   ; opt@mpGeophysicalLineThicknessF = 3
 range := (/10,80,-12.5,191/)
 
@@ -513,12 +516,14 @@ notDrawAndFrame(opt)
   opt@mpMinLatF = 7
   opt@mpMaxLonF = 170
   opt@mpMinLonF = 0
-  opt@mpGridAndLimbOn = True
+  opt@mpGridAndLimbOn = False
   opt@mpGridLineThicknessF = 0.5
   opt@mpGridLonSpacingF = 30
   opt@mpGridLatSpacingF = 15
   ; opt@mpGridLineDashPattern = 1
-  opt@mpGeophysicalLineColor = "#206e22"
+  ; opt@mpGeophysicalLineColor = "#206e22"
+  opt@mpGeophysicalLineColor = "#78CFD5"
+  opt@mpGeophysicalLineThicknessF = 2
   opt@mpPerimOn         = False 
   opt@mpCenterLonF = 105
   opt@mpMaxLonF = 180
@@ -808,7 +813,7 @@ notDrawAndFrame(res_test)
   ;   res_test@dotDrawOrder = opt@dotDrawOrder
   ;   ; print(opt@dotDrawOrder)
   ; end if
-  level = 90
+  level = 95
   res_test@cnLevel = t@$("t"+level)$
   res_test@hatchingPattern = 8
   res_test@hatchingColor = "White"
@@ -843,7 +848,7 @@ notDrawAndFrame(res_test)
   ;   res_test@dotDrawOrder = opt@dotDrawOrder
   ;   ; print(opt@dotDrawOrder)
   ; end if
-  level = 90
+  level = 95
   res_test@cnLevel = t@$("t"+level)$
   res_test@hatchingPattern = 8
   res_test@hatchingColor = "White"
@@ -868,7 +873,7 @@ notDrawAndFrame(res_test)
   opt@lbOrientation = "Horizontal"
   opt@pmLabelBarOrthogonalPosF = -0.27
   opt@pmLabelBarParallelPosF = 0.36
-  opt@pmLabelBarWidthF = 0.38
+  opt@pmLabelBarWidthF = 0.4
   opt@pmLabelBarHeightF = 0.1
   opt@lbTitleOffsetF = 0.2
   opt@lbTitleString = "TC Track Density Corr"
@@ -876,7 +881,9 @@ notDrawAndFrame(res_test)
   opt@lbTitlePosition = "Bottom"
   opt@lbTitleDirection = "Across"
   opt@lbLabelStride = 1
-  delete(opt@lbLabelStrings)
+  opt@lbLabelAutoStride = False
+  opt@lbLabelStrings := (/"-0.4","","-0.2","","0.3","","0.5"/)
+  ; delete(opt@lbLabelStrings)
   ; opt@lbTitleAngleF = 90
   opt@lbTitleFontHeightF = 0.021
   ; opt@lbTitleOffsetF = 0.2
@@ -889,11 +896,12 @@ notDrawAndFrame(res_test)
 
   ; opt@cnFillColors := (/"transparent","#E6CC5D","#EB9E17","#e75c40"/)
   opt@cnFillColors := (/"#3AA142","#68B75D","#9BCB94","transparent","#F6E9BC","#F1CD5C","#ecb81d","#e99b00"/)
-  opt@cnLineColors := (/"transparent","#ff748b","transparent","transparent","#ff748b","transparent","transparent"/)
+  opt@cnLineColors := (/"#ff748b","transparent","transparent","transparent","transparent","#ff748b","transparent"/)
   opt@cnLineThicknessF = 10
   ; opt@cnFillColors := (/"transparent","#F6E9BC","#F1CD5C","#F0BF2A"/)
   opt@cnLevels := (/-t@r95,-t@r90,-0.2,0.2,t@r90,t@r95,t@r99/)
   opt@cnFillOn = True
+  opt@sigLevel = 95
   t = t_value(21)
   print(t)
   ; exit()
@@ -1063,7 +1071,7 @@ ranges(0) = 0
     rvc@vcLineArrowHeadMinSizeF = 0.01
     ; rvc@vcFillArrowMinFracWidthF = 0.1
     rvc@vcMinDistanceF = 0.045
-    rvc@vcLineArrowThicknessF = 6
+    rvc@vcLineArrowThicknessF = 4
     rvc@test = False
     ; rvc@vcColorsOn = True
     ; rvc@vcLevels = (/5,10,15,20/)
@@ -1078,6 +1086,7 @@ ranges(0) = 0
     rvc@vcLineArrowColor = "DodgerBlue"
     rvc@smoothing = True
     rvc@vcColorsOn = True
+    rvc@sigLevel = 95
   add_reg_vc(plot(7),ts1,type_vc,range,rvc)
     rvc@vcRefAnnoOn = False
   add_reg_vc(plot(5),ts0,type_vc,range,rvc)
